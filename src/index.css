@@ -88,6 +88,18 @@ body {
   @page {
     size: A4;
     margin: 0.4in;
+    /* Coba hide header/footer (support terbatas di iOS Safari) */
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  /* Hide browser headers/footers di print */
+  @page :first {
+    margin-top: 0.4in;
+  }
+
+  @page :last {
+    margin-bottom: 0.4in;
   }
 
   /* Ensure content fits well and konsisten lebar-nya di semua device */

@@ -1,8 +1,5 @@
-import { useState, useRef } from "react";
 import type { CVData } from "../../types";
-import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
+import { ArrowLeft, Printer } from "lucide-react";
 import PreviewHeader from "./PreviewHeader";
 import PreviewEducation from "./PreviewEducation";
 import PreviewExperience from "./PreviewExperience";
@@ -29,130 +26,6 @@ const formatDate = (dateString: string): string => {
 };
 
 export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const cvRef = useRef<HTMLElement>(null);
-
-  const downloadPDF = async () => {
-    if (!cvRef.current) return;
-
-    setIsGenerating(true);
-
-    // Inject temporary style to fix oklch colors for html2canvas
-    const style = document.createElement("style");
-    style.id = "pdf-color-fix";
-    style.textContent = `
-      * {
-        color: inherit !important;
-        background-color: inherit !important;
-        border-color: inherit !important;
-      }
-    `;
-    document.head.appendChild(style);
-
-    try {
-      const element = cvRef.current;
-      const fileName = data.fullName ? `CV_${data.fullName.replace(/\s+/g, "_")}.pdf` : "CV_Curriculum_Vitae.pdf";
-
-      // Scroll to top
-      window.scrollTo(0, 0);
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // Clone element dan force layout ke lebar desktop tetap
-      const clone = element.cloneNode(true) as HTMLElement;
-      const TARGET_WIDTH_PX = 794; // ~A4 width @ 96 DPI, konsisten di semua device
-      clone.style.position = "absolute";
-      clone.style.left = "-10000px";
-      clone.style.top = "0";
-      clone.style.width = `${TARGET_WIDTH_PX}px`;
-      clone.style.maxWidth = `${TARGET_WIDTH_PX}px`;
-      clone.style.boxSizing = "border-box";
-      document.body.appendChild(clone);
-
-      // Apply all computed styles to cloned element
-      const applyComputedStyles = (original: Element, cloned: Element) => {
-        const origStyle = window.getComputedStyle(original);
-        const clonedEl = cloned as HTMLElement;
-
-        // Apply critical style properties
-        clonedEl.style.color = origStyle.color;
-        clonedEl.style.backgroundColor = origStyle.backgroundColor;
-        clonedEl.style.borderColor = origStyle.borderColor;
-        clonedEl.style.fontSize = origStyle.fontSize;
-        clonedEl.style.fontFamily = origStyle.fontFamily;
-        clonedEl.style.fontWeight = origStyle.fontWeight;
-        clonedEl.style.lineHeight = origStyle.lineHeight;
-        clonedEl.style.padding = origStyle.padding;
-        clonedEl.style.margin = origStyle.margin;
-        clonedEl.style.width = origStyle.width;
-        clonedEl.style.height = origStyle.height;
-
-        // Recursively apply to children
-        const origChildren = original.children;
-        const clonedChildren = cloned.children;
-        for (let i = 0; i < origChildren.length; i++) {
-          if (clonedChildren[i]) {
-            applyComputedStyles(origChildren[i], clonedChildren[i]);
-          }
-        }
-      };
-
-      applyComputedStyles(element, clone);
-
-      // Render clone to canvas
-      const canvas = await html2canvas(clone, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-      });
-
-      // Remove clone
-      document.body.removeChild(clone);
-
-      // Create PDF
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      const pdfWidth = 210; // A4 width in mm
-      const pdfHeight = 297; // A4 height in mm
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      // Add more pages if needed
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      // Save PDF
-      pdf.save(fileName);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Terjadi kesalahan saat membuat PDF. Mohon coba lagi atau gunakan tombol Print.");
-    } finally {
-      // Remove injected style
-      const styleEl = document.getElementById("pdf-color-fix");
-      if (styleEl) {
-        styleEl.remove();
-      }
-      setIsGenerating(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
       <nav className="print:hidden sticky top-0 bg-white border-b border-gray-200 shadow-sm z-10">
@@ -161,37 +34,23 @@ export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
             <ArrowLeft className="w-4 h-4" />
             Kembali ke Form
           </button>
-          <div className="flex gap-2">
-            <button
-              onClick={downloadPDF}
-              disabled={isGenerating}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Membuat PDF...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </>
-              )}
-            </button>
-            <button onClick={onPrint} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-              <Printer className="w-4 h-4" />
-              Print
-            </button>
-          </div>
+          <button onClick={onPrint} className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md">
+            <Printer className="w-5 h-5" />
+            Print / Save as PDF
+          </button>
         </div>
-        <div className="max-w-4xl mx-auto px-4 py-2 bg-yellow-50 border-t border-yellow-200 text-sm text-yellow-800">
-          💡 <strong>Tips:</strong> Gunakan tombol <strong>"Download PDF"</strong> untuk mobile, atau <strong>"Print"</strong> untuk desktop.
+        <div className="max-w-4xl mx-auto px-4 py-2 bg-blue-50 border-t border-blue-200 text-sm text-blue-800">
+          <p>
+            💡 <strong>Tips:</strong> Klik <strong>"Print"</strong> lalu pilih <strong>"Save as PDF"</strong> untuk menyimpan CV Anda.
+          </p>
+          <p className="mt-1 text-xs">
+            📱 <strong>iOS/iPhone:</strong> Gunakan browser <strong>Chrome</strong> untuk hasil terbaik, atau gunakan desktop untuk kontrol penuh.
+          </p>
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto bg-white shadow-lg print:shadow-none print:max-w-none my-4 print:my-0">
-        <article ref={cvRef} className="p-8 md:p-10 print:p-[0.75in] font-serif">
+        <article className="p-8 md:p-10 print:p-[0.75in] font-serif">
           <PreviewHeader
             profilePhoto={data.profilePhoto}
             fullName={data.fullName}
