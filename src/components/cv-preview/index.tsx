@@ -160,11 +160,14 @@ export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
             <main className="max-w-4xl mx-auto bg-white shadow-lg print:shadow-none print:max-w-none my-4 print:my-0">
                 <article ref={cvRef} className="p-8 md:p-10 print:p-[0.75in] font-serif">
                     <PreviewHeader
+                        profilePhoto={data.profilePhoto}
                         fullName={data.fullName}
                         phone={data.phone}
                         email={data.email}
                         linkedin={data.linkedin}
+                        showLinkedinUnderline={data.showLinkedinUnderline}
                         portfolio={data.portfolio}
+                        showPortfolioUnderline={data.showPortfolioUnderline}
                         address={data.address}
                     />
 

@@ -49,11 +49,14 @@ export interface Award {
 }
 
 export interface CVData {
+    profilePhoto: string;
     fullName: string;
     phone: string;
     email: string;
     linkedin: string;
+    showLinkedinUnderline: boolean;
     portfolio: string;
+    showPortfolioUnderline: boolean;
     address: string;
     summary: string;
     experiences: Experience[];

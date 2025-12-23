@@ -2,11 +2,14 @@
 import type { CVData } from './cv';
 
 export const initialCVData: CVData = {
+    profilePhoto: '',
     fullName: '',
     phone: '',
     email: '',
     linkedin: '',
+    showLinkedinUnderline: true,
     portfolio: '',
+    showPortfolioUnderline: true,
     address: '',
     summary: '',
     experiences: [],
