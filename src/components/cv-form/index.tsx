@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { CVData } from "../../types";
-import { Eye, ArrowLeft, Wand2 } from "lucide-react";
+import { Eye, ArrowLeft } from "lucide-react";
 import PersonalInfoForm from "./PersonalInfoForm";
 import SummaryForm from "./SummaryForm";
 import EducationForm from "./EducationForm";
@@ -9,7 +9,7 @@ import BootcampForm from "./BootcampForm";
 import SkillsForm from "./SkillsForm";
 import AwardForm from "./AwardForm";
 import HobbyForm from "./HobbyForm";
-import { dummyData } from "../../utils/dummyData";
+// import { dummyData } from "../../utils/dummyData"; // Dummy data disimpan tapi tidak ditampilkan di UI
 
 interface CVFormProps {
   data: CVData;
@@ -27,10 +27,10 @@ export default function CVForm({ data, onChange, onPreview, onBackToHome }: CVFo
     onChange(newData);
   };
 
-  const handleFillDummyData = () => {
-    setFormData(dummyData);
-    onChange(dummyData);
-  };
+  // const handleFillDummyData = () => {
+  //   setFormData(dummyData);
+  //   onChange(dummyData);
+  // };
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
@@ -43,10 +43,16 @@ export default function CVForm({ data, onChange, onPreview, onBackToHome }: CVFo
         )}
         <h1 className="text-3xl font-bold text-gray-900 mb-2">CV ATS Builder</h1>
         <p className="text-gray-600">Buat CV profesional untuk siswa SMA/SMK, mahasiswa, dan fresh graduate.</p>
-        <button onClick={handleFillDummyData} type="button" className="mt-4 flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors mx-auto shadow-md">
+        {/*
+        <button
+          onClick={handleFillDummyData}
+          type="button"
+          className="mt-4 flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors mx-auto shadow-md"
+        >
           <Wand2 className="w-4 h-4" />
           Isi dengan Contoh CV
         </button>
+        */}
       </header>
 
       <form className="space-y-8">

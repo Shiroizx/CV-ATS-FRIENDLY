@@ -1,7 +1,7 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Analytics } from "@vercel/analytics/react"
-import MainPage from './pages/MainPage';
-import CVBuilderPage from './pages/CVBuilderPage';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
+import MainPage from "./pages/MainPage";
+import CVBuilderPage from "./pages/CVBuilderPage";
 
 function App() {
   return (
