@@ -15,6 +15,7 @@
     "@tiptap/extension-list-item": "^3.14.0",
     "@tiptap/react": "^3.14.0",
     "@tiptap/starter-kit": "^3.14.0",
+    "@vercel/analytics": "^1.6.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.562.0",
