@@ -187,3 +187,10 @@ body {
     border-color: #666 !important;
   }
 }
+
+/* Tambahan jarak atas khusus print di desktop (mobile jangan diubah) */
+@media print and (min-width: 768px) {
+  article {
+    padding-top: 0.7in !important; /* sedikit lebih longgar dari default 0.4in */
+  }
+}

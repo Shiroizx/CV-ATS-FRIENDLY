@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CVData } from "../../types";
 import { ArrowLeft, Printer } from "lucide-react";
+import { sanitizeHtml } from "../../utils/sanitizeHtml";
 import PreviewHeader from "./PreviewHeader";
 import PreviewEducation from "./PreviewEducation";
 import PreviewExperience from "./PreviewExperience";
@@ -107,7 +108,7 @@ export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
 
           {data.summary && (
             <section className="mb-5">
-              <div className="cv-content text-sm text-black leading-relaxed text-justify" dangerouslySetInnerHTML={{ __html: data.summary }} />
+              <div className="cv-content text-sm text-black leading-relaxed text-justify" dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.summary) }} />
             </section>
           )}
 
