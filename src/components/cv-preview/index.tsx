@@ -57,11 +57,15 @@ export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
       window.scrollTo(0, 0);
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Clone element dan force computed styles
+      // Clone element dan force layout ke lebar desktop tetap
       const clone = element.cloneNode(true) as HTMLElement;
+      const TARGET_WIDTH_PX = 794; // ~A4 width @ 96 DPI, konsisten di semua device
       clone.style.position = "absolute";
-      clone.style.left = "-9999px";
+      clone.style.left = "-10000px";
       clone.style.top = "0";
+      clone.style.width = `${TARGET_WIDTH_PX}px`;
+      clone.style.maxWidth = `${TARGET_WIDTH_PX}px`;
+      clone.style.boxSizing = "border-box";
       document.body.appendChild(clone);
 
       // Apply all computed styles to cloned element
