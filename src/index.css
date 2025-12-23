@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+/* Base styles */
+:root {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+  min-height: 80px;
+  padding: 0.5rem 0.75rem;
+}
+
+.ProseMirror p {
+  margin: 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+
+.ProseMirror li {
+  margin: 0.125rem 0;
+}
+
+.ProseMirror strong {
+  font-weight: 600;
+}
+
+.ProseMirror em {
+  font-style: italic;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* CV Preview Content Styles */
+.cv-content ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+
+.cv-content li {
+  margin: 0.125rem 0;
+}
+
+.cv-content p {
+  margin: 0;
+}
+
+/* Print Styles */
+@media print {
+
+  /* Hide navigation buttons */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset background and shadows */
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page margins - minimal margins to fit more content */
+  @page {
+    size: A4;
+    margin: 0.4in;
+  }
+
+  /* Ensure content fits well */
+  main {
+    box-shadow: none !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  article {
+    padding: 0.25in !important;
+  }
+
+  /* Smaller spacing in print */
+  section {
+    page-break-inside: avoid;
+    margin-bottom: 0.75rem !important;
+  }
+
+  /* Reduce header size */
+  header h1 {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  /* Reduce section title size */
+  h2 {
+    font-size: 0.875rem !important;
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+
+  /* Smaller text for better fit */
+  p,
+  span,
+  li,
+  td {
+    font-size: 0.75rem !important;
+    line-height: 1.4 !important;
+  }
+
+  h3 {
+    font-size: 0.8rem !important;
+  }
+
+  /* Reduce spacing in lists */
+  ul {
+    margin: 0.125rem 0 !important;
+  }
+
+  li {
+    margin: 0 !important;
+  }
+
+  /* Reduce space-y gaps */
+  .space-y-4>*+* {
+    margin-top: 0.5rem !important;
+  }
+
+  .space-y-1>*+* {
+    margin-top: 0.125rem !important;
+  }
+
+  /* Ensure text is black for better printing */
+  h1,
+  h2,
+  h3,
+  p,
+  span,
+  li,
+  td {
+    color: black !important;
+  }
+
+  /* Ensure borders are visible */
+  header {
+    border-color: black !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  h2 {
+    border-color: #666 !important;
+  }
+}

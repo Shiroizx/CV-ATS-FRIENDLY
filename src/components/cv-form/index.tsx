@@ -1,0 +1,60 @@
+import { useState } from 'react';
+import type { CVData } from '../../types';
+import { Eye } from 'lucide-react';
+import PersonalInfoForm from './PersonalInfoForm';
+import SummaryForm from './SummaryForm';
+import EducationForm from './EducationForm';
+import ExperienceForm from './ExperienceForm';
+import BootcampForm from './BootcampForm';
+import SkillsForm from './SkillsForm';
+import AwardForm from './AwardForm';
+import HobbyForm from './HobbyForm';
+
+interface CVFormProps {
+    data: CVData;
+    onChange: (data: CVData) => void;
+    onPreview: () => void;
+}
+
+export default function CVForm({ data, onChange, onPreview }: CVFormProps) {
+    const [formData, setFormData] = useState<CVData>(data);
+
+    const updateField = <K extends keyof CVData>(field: K, value: CVData[K]) => {
+        const newData = { ...formData, [field]: value };
+        setFormData(newData);
+        onChange(newData);
+    };
+
+    return (
+        <div className="max-w-3xl mx-auto py-8 px-4">
+            <header className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">CV ATS Builder</h1>
+                <p className="text-gray-600">
+                    Buat CV yang ATS-friendly dengan mudah
+                </p>
+            </header>
+
+            <form className="space-y-8">
+                <PersonalInfoForm data={formData} onUpdate={updateField} />
+                <SummaryForm data={formData} onUpdate={updateField} />
+                <EducationForm data={formData} onUpdate={updateField} />
+                <ExperienceForm data={formData} onUpdate={updateField} />
+                <BootcampForm data={formData} onUpdate={updateField} />
+                <SkillsForm data={formData} onUpdate={updateField} />
+                <AwardForm data={formData} onUpdate={updateField} />
+                <HobbyForm data={formData} onUpdate={updateField} />
+
+                <div className="flex justify-center">
+                    <button
+                        type="button"
+                        onClick={onPreview}
+                        className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/25"
+                    >
+                        <Eye className="w-5 h-5" />
+                        Lihat Preview CV
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
