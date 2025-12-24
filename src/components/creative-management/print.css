@@ -1,0 +1,119 @@
+/* Print-specific styles for Creative Management CV */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .creative-management-cv {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .creative-management-cv header,
+  .creative-management-cv footer {
+    background-color: #1e3a5f !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Header - Larger */
+  .creative-management-cv header {
+    padding: 18px 24px !important;
+  }
+
+  .creative-management-cv h1 {
+    font-size: 30px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .creative-management-cv header p {
+    font-size: 16px !important;
+  }
+
+  .creative-management-cv header img {
+    width: 80px !important;
+    height: 80px !important;
+  }
+
+  /* Content area - More padding */
+  .creative-management-cv>article>div {
+    padding: 14px 24px !important;
+  }
+
+  /* Section titles - Larger */
+  .creative-management-cv h2 {
+    font-size: 18px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .creative-management-cv h3 {
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Body text - More readable */
+  .creative-management-cv p,
+  .creative-management-cv li,
+  .creative-management-cv span,
+  .creative-management-cv div {
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Sections - More spacing */
+  .creative-management-cv section {
+    margin-bottom: 10px !important;
+    page-break-inside: avoid;
+  }
+
+  .creative-management-cv section>div:first-child {
+    margin-bottom: 6px !important;
+  }
+
+  /* Lists - Better spacing */
+  .creative-management-cv .space-y-4>*+*,
+  .creative-management-cv .space-y-2>*+*,
+  .creative-management-cv .space-y-1>*+* {
+    margin-top: 6px !important;
+  }
+
+  .creative-management-cv .mb-6,
+  .creative-management-cv .mb-5,
+  .creative-management-cv .mb-4,
+  .creative-management-cv .mb-3,
+  .creative-management-cv .mb-2,
+  .creative-management-cv .mb-1 {
+    margin-bottom: 5px !important;
+  }
+
+  .creative-management-cv .gap-6,
+  .creative-management-cv .gap-4,
+  .creative-management-cv .gap-3 {
+    gap: 10px !important;
+  }
+
+  /* Footer - Larger */
+  .creative-management-cv footer {
+    padding: 12px 24px !important;
+  }
+
+  .creative-management-cv footer div,
+  .creative-management-cv footer span {
+    font-size: 10px !important;
+  }
+
+  /* Grid - Better spacing */
+  .creative-management-cv .grid {
+    gap: 12px !important;
+  }
+}

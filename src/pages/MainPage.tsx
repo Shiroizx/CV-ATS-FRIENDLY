@@ -11,6 +11,14 @@ const cvTemplates = [
     color: "from-blue-500 to-blue-600",
     popular: true,
   },
+  {
+    id: "creative-management",
+    name: "Creative Manajemen",
+    description: "Template CV kreatif dengan desain modern untuk posisi manajemen",
+    features: ["Modern design", "Professional look", "Creative layout"],
+    color: "from-purple-500 to-pink-600",
+    popular: false,
+  },
 ];
 
 export default function MainPage() {
@@ -93,7 +101,7 @@ export default function MainPage() {
             {cvTemplates.map((template) => (
               <div
                 key={template.id}
-                onClick={() => navigate("/builder")}
+                onClick={() => navigate(template.id === "creative-management" ? "/builder/creative-management" : "/builder")}
                 className="group cursor-pointer relative bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-blue-300 transition-all hover:scale-[1.02]"
               >
                 {template.popular && <div className="absolute top-4 right-4 px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold rounded-full z-10">Popular</div>}

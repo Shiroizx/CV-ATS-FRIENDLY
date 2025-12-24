@@ -1,0 +1,28 @@
+/* Hide bullets in preview to match PDF output */
+.prose ul,
+.prose-sm ul {
+    list-style-type: none !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
+.prose li,
+.prose-sm li {
+    list-style: none !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
+.prose li::before,
+.prose-sm li::before,
+.prose li::marker,
+.prose-sm li::marker {
+    content: none !important;
+    display: none !important;
+}
+
+/* Additional override for any list markers */
+.prose ul li::marker,
+.prose-sm ul li::marker {
+    content: "" !important;
+}

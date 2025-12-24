@@ -78,10 +78,15 @@ body {
   }
 
   /* Reset background and shadows */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   body {
     background: white !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Page margins - minimal margins to fit more content */
@@ -108,7 +113,8 @@ body {
     margin: 0 auto !important;
   }
 
-  article {
+  /* Don't override article padding for Creative Management CV */
+  article:not(.creative-management-cv article) {
     width: 7.94in; /* ~A4 width in print area */
     max-width: 7.94in;
     margin: 0 auto !important;
@@ -116,63 +122,215 @@ body {
     box-sizing: border-box;
   }
 
-  /* Smaller spacing in print */
-  section {
+  .creative-management-cv article {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0.75in !important;
+    box-sizing: border-box;
+  }
+
+  /* Smaller spacing in print - but not for Creative Management CV */
+  section:not(.creative-management-cv section) {
     page-break-inside: avoid;
     margin-bottom: 0.75rem !important;
   }
 
-  /* Reduce header size */
-  header h1 {
+  .creative-management-cv section {
+    page-break-inside: avoid;
+    margin-bottom: 2rem !important;
+  }
+
+  /* Preserve Creative Management CV styling - use exact Tailwind sizes */
+  .creative-management-cv header h1 {
+    font-size: 2.25rem !important; /* text-4xl */
+    margin-bottom: 0.5rem !important;
+  }
+
+  @media print and (min-width: 768px) {
+    .creative-management-cv header h1 {
+      font-size: 3rem !important; /* md:text-5xl */
+    }
+  }
+
+  .creative-management-cv header p {
+    font-size: 1.25rem !important; /* text-xl */
+  }
+
+  .creative-management-cv h2 {
+    font-size: 1.5rem !important; /* text-2xl */
+    margin-bottom: 1rem !important;
+  }
+
+  .creative-management-cv h3 {
+    font-size: 1rem !important;
+  }
+
+  .creative-management-cv .prose,
+  .creative-management-cv .prose p,
+  .creative-management-cv .prose span {
+    font-size: 0.875rem !important; /* prose-sm */
+    line-height: 1.6 !important;
+  }
+
+  .creative-management-cv p:not(.prose p):not(header p):not(footer p),
+  .creative-management-cv span:not(header span):not(footer span):not(.prose span),
+  .creative-management-cv li {
+    font-size: 0.875rem !important;
+    line-height: 1.6 !important;
+  }
+
+  .creative-management-cv .space-y-6 > * + * {
+    margin-top: 1.5rem !important;
+  }
+
+  .creative-management-cv .space-y-2 > * + * {
+    margin-top: 0.5rem !important;
+  }
+
+  .creative-management-cv .mb-8 {
+    margin-bottom: 2rem !important;
+  }
+
+  .creative-management-cv .mb-6 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .creative-management-cv .mb-4 {
+    margin-bottom: 1rem !important;
+  }
+
+  .creative-management-cv .mb-2 {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .creative-management-cv .mb-1 {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .creative-management-cv .gap-6 {
+    gap: 1.5rem !important;
+  }
+
+  .creative-management-cv .gap-4 {
+    gap: 1rem !important;
+  }
+
+  .creative-management-cv .gap-3 {
+    gap: 0.75rem !important;
+  }
+
+  /* Reduce header size for other CVs */
+  header:not(.creative-management-cv header) h1 {
     font-size: 1.25rem !important;
     margin-bottom: 0.25rem !important;
   }
 
-  /* Reduce section title size */
-  h2 {
+  /* Reduce section title size for other CVs */
+  h2:not(.creative-management-cv h2) {
     font-size: 0.875rem !important;
     margin-bottom: 0.5rem !important;
     padding-bottom: 0.25rem !important;
   }
 
-  /* Smaller text for better fit */
-  p,
-  span,
-  li,
+  /* Smaller text for other CVs */
+  p:not(.creative-management-cv p),
+  span:not(.creative-management-cv span):not(header span):not(footer span),
+  li:not(.creative-management-cv li),
   td {
     font-size: 0.75rem !important;
     line-height: 1.4 !important;
   }
 
-  h3 {
+  h3:not(.creative-management-cv h3) {
     font-size: 0.8rem !important;
   }
 
-  /* Reduce spacing in lists */
-  ul {
+  /* Reduce spacing in lists - but not for Creative Management CV */
+  ul:not(.creative-management-cv ul) {
     margin: 0.125rem 0 !important;
   }
 
-  li {
+  li:not(.creative-management-cv li) {
     margin: 0 !important;
   }
 
-  /* Reduce space-y gaps */
-  .space-y-4 > * + * {
+  .creative-management-cv ul {
+    margin: 0 !important;
+  }
+
+  .creative-management-cv li {
+    margin: 0 !important;
+  }
+
+  /* Reduce space-y gaps - but not for Creative Management CV */
+  .space-y-4:not(.creative-management-cv .space-y-4) > * + * {
     margin-top: 0.5rem !important;
   }
 
-  .space-y-1 > * + * {
+  .space-y-1:not(.creative-management-cv .space-y-1) > * + * {
     margin-top: 0.125rem !important;
   }
 
-  /* Ensure text is black for better printing */
-  h1,
-  h2,
-  h3,
-  p,
-  span,
-  li,
+  /* Preserve header and footer colors for Creative Management CV */
+  .creative-management-cv header,
+  .creative-management-cv footer {
+    background-color: #1e3a5f !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    padding-left: 0.75in !important;
+    padding-right: 0.75in !important;
+  }
+
+  .creative-management-cv header {
+    padding-top: 0.75in !important;
+    padding-bottom: 1.5rem !important;
+  }
+
+  .creative-management-cv footer {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+
+  .creative-management-cv header h1,
+  .creative-management-cv header p,
+  .creative-management-cv footer span {
+    color: white !important;
+  }
+
+  /* Ensure main content text is readable */
+  .creative-management-cv .prose,
+  .creative-management-cv .prose p,
+  .creative-management-cv .prose span,
+  .creative-management-cv section p,
+  .creative-management-cv section span:not(header span):not(footer span) {
+    color: #374151 !important;
+  }
+
+  /* Ensure section titles are dark */
+  .creative-management-cv h2 {
+    color: #111827 !important;
+  }
+
+  .creative-management-cv h3 {
+    color: #111827 !important;
+  }
+
+  /* Preserve main content padding */
+  .creative-management-cv > article > div {
+    padding-left: 0.75in !important;
+    padding-right: 0.75in !important;
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+
+  /* Ensure text is black for other CVs */
+  h1:not(.creative-management-cv h1),
+  h2:not(.creative-management-cv h2),
+  h3:not(.creative-management-cv h3),
+  p:not(.creative-management-cv p),
+  span:not(.creative-management-cv span):not(header span):not(footer span),
+  li:not(.creative-management-cv li),
   td {
     color: black !important;
   }
