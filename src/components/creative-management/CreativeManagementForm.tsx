@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Plus, Trash2, X, Wand2, Camera } from "lucide-react";
+import { Plus, Trash2, X, Camera } from "lucide-react";
 import type { CreativeManagementData, CreativeExperience, CreativeEducation, ExperienceType } from "../../types/creativeManagement";
 import RichTextEditor from "../ui/RichTextEditor";
 
@@ -25,69 +25,6 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
     },
     [onChange]
   );
-
-  const handleFillDummyData = useCallback(() => {
-    const dummyData: CreativeManagementData = {
-      profilePhoto: "",
-      fullName: "Rufus Stewart",
-      profession: "Spesialis Grafis Desainer",
-      whatsapp: "123-456-7890",
-      email: "hello@reallygreatsite.com",
-      location: "123 Anywhere St., Any City",
-      linkedin: "https://linkedin.com/in/rufus-stewart",
-      summary: "Saya sudah pengalaman 2 tahun bekerja sebagai desainer grafis profesional. Mampu berbahasa inggris aktif dan mampu cepat beradaptasi dengan lingkungan.",
-      experiences: [
-        {
-          id: "1",
-          type: "work",
-          company: "Perusahaan Wardiere",
-          position: "PERANCANG SOFTWARE GRAFIS",
-          startDate: "2016",
-          endDate: "",
-          isCurrentJob: true,
-          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc a ultricies tortor. In vestibulum vitae velit nec viverra. Proin non ultrices ex. Integer mattis dui vel pretium euismod.",
-        },
-        {
-          id: "2",
-          type: "organization",
-          name: "Himpunan Mahasiswa Desain",
-          position: "KETUA DIVISI KREATIF",
-          startDate: "2014",
-          endDate: "2016",
-          isCurrentJob: false,
-          description:
-            "Mengelola tim 15 orang untuk event tahunan dengan budget 50 juta rupiah. Mengoptimalkan alokasi sumber daya untuk 5 program kerja divisi. Menyusun SOP untuk operasional harian yang meningkatkan efisiensi tim sebesar 30%.",
-        },
-      ],
-      skills: ["Web Design", "Design Thinking", "Wireframe Creation", "Problem-Solving", "Computer Literacy", "Front End Coding", "Project Management Tools", "Strong Communication"],
-      education: [
-        {
-          id: "1",
-          university: "UNIVERSITAS LARANA",
-          major: "S1 JURUSAN TELEKOMUNIKASI",
-          startDate: "2014",
-          endDate: "2016",
-          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc a ultricies tortor. In vestibulum vitae velit nec viverra. Proin non ultrices ex. Integer mattis dui vel pretium euismod.",
-        },
-        {
-          id: "2",
-          university: "SMA NEGERI 2",
-          major: "JURUSAN IPA",
-          startDate: "2010",
-          endDate: "2014",
-          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc a ultricies tortor. In vestibulum vitae velit nec viverra. Proin non ultrices ex. Integer mattis dui vel pretium euismod.",
-        },
-      ],
-    };
-    // Reset local state
-    setSkillInput("");
-    // Create a new object to ensure React detects the change
-    const newData = { ...dummyData };
-    // Update dataRef first
-    dataRef.current = newData;
-    // Then call onChange to update parent state
-    onChange(newData);
-  }, [onChange]);
 
   const handlePhotoChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,7 +64,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
     () => (
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <span className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></span>
+          <span className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></span>
           Header & Profil Profesional
         </h2>
         <div className="space-y-4">
@@ -147,7 +84,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-20 h-24 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors"
+                    className="w-20 h-24 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
                   >
                     <Camera className="w-6 h-6 text-gray-400" />
                     <span className="text-xs text-gray-500 mt-1">Upload</span>
@@ -156,7 +93,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               </div>
               <div className="flex-1">
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                   {data.profilePhoto ? "Ganti Foto" : "Pilih Foto"}
                 </button>
                 <p className="text-xs text-gray-500 mt-1">Format: JPG, PNG. Maksimal 2MB</p>
@@ -171,7 +108,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="text"
               value={data.fullName}
               onChange={(e) => updateField("fullName", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Contoh: John Doe"
             />
           </div>
@@ -183,7 +120,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="text"
               value={data.profession}
               onChange={(e) => updateField("profession", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Contoh: Spesialis Grafis Desainer"
             />
           </div>
@@ -195,7 +132,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="tel"
               value={data.whatsapp}
               onChange={(e) => updateField("whatsapp", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Contoh: +62 812-3456-7890"
             />
           </div>
@@ -207,7 +144,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="email"
               value={data.email}
               onChange={(e) => updateField("email", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Contoh: john.doe@email.com"
             />
           </div>
@@ -219,7 +156,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="text"
               value={data.location}
               onChange={(e) => updateField("location", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Contoh: Jakarta, Indonesia"
             />
           </div>
@@ -231,7 +168,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="url"
               value={data.linkedin}
               onChange={(e) => updateField("linkedin", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="https://linkedin.com/in/yourprofile"
             />
           </div>
@@ -298,7 +235,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></span>
+            <span className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></span>
             Pengalaman Kerja/Organisasi <span className="text-sm font-normal text-gray-500">(Maksimal 2)</span>
           </h2>
           <div className="flex gap-2 w-full sm:w-auto">
@@ -306,7 +243,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="button"
               onClick={() => addExperience("work")}
               disabled={data.experiences.length >= 2}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
               Kerja
@@ -315,7 +252,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               type="button"
               onClick={() => addExperience("organization")}
               disabled={data.experiences.length >= 2}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
               Organisasi
@@ -328,7 +265,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-gray-900">Pengalaman #{idx + 1}</h3>
-                  <span className={`px-2 py-1 text-xs font-medium rounded ${exp.type === "work" ? "bg-purple-100 text-purple-700" : "bg-pink-100 text-pink-700"}`}>{exp.type === "work" ? "Kerja" : "Organisasi"}</span>
+                  <span className={`px-2 py-1 text-xs font-medium rounded ${exp.type === "work" ? "bg-blue-100 text-blue-700" : "bg-blue-100 text-blue-700"}`}>{exp.type === "work" ? "Kerja" : "Organisasi"}</span>
                 </div>
                 <button type="button" onClick={() => removeExperience(exp.id)} className="text-red-500 hover:text-red-700">
                   <Trash2 className="w-4 h-4" />
@@ -343,7 +280,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                         type="text"
                         value={exp.company || ""}
                         onChange={(e) => updateExperience(exp.id, "company", e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Contoh: PT. ABC Indonesia"
                       />
                     </div>
@@ -353,7 +290,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                         type="text"
                         value={exp.position}
                         onChange={(e) => updateExperience(exp.id, "position", e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Contoh: Operations Manager"
                       />
                     </div>
@@ -364,7 +301,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                           type="text"
                           value={exp.startDate || ""}
                           onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                           placeholder="Contoh: 2016"
                         />
                       </div>
@@ -375,7 +312,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                           value={exp.endDate || ""}
                           onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)}
                           disabled={exp.isCurrentJob}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 mb-2"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 mb-2"
                           placeholder="Contoh: 2018"
                         />
                         <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
@@ -383,7 +320,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                             type="checkbox"
                             checked={exp.isCurrentJob || false}
                             onChange={(e) => updateExperience(exp.id, "isCurrentJob", e.target.checked)}
-                            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
                           />
                           <span>Masih bekerja</span>
                         </label>
@@ -398,7 +335,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                         type="text"
                         value={exp.name || ""}
                         onChange={(e) => updateExperience(exp.id, "name", e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Contoh: Himpunan Mahasiswa Manajemen"
                       />
                     </div>
@@ -408,7 +345,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                         type="text"
                         value={exp.position}
                         onChange={(e) => updateExperience(exp.id, "position", e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Contoh: Ketua Divisi Operasional"
                       />
                     </div>
@@ -419,7 +356,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                           type="text"
                           value={exp.startDate || ""}
                           onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                           placeholder="Contoh: 2016"
                         />
                       </div>
@@ -430,7 +367,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                           value={exp.endDate || ""}
                           onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)}
                           disabled={exp.isCurrentJob}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 mb-2"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 mb-2"
                           placeholder="Contoh: 2018"
                         />
                         <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
@@ -438,7 +375,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                             type="checkbox"
                             checked={exp.isCurrentJob || false}
                             onChange={(e) => updateExperience(exp.id, "isCurrentJob", e.target.checked)}
-                            className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 cursor-pointer"
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-pink-500 cursor-pointer"
                           />
                           <span>Masih di organisasi</span>
                         </label>
@@ -493,7 +430,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></span>
+            <span className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></span>
             Kemampuan <span className="text-sm font-normal text-gray-500">(Maksimal 9)</span>
           </h2>
         </div>
@@ -504,18 +441,18 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
             onChange={(e) => setSkillInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && addSkill()}
             placeholder="Contoh: Web Design, Leadership, Problem-Solving"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             disabled={data.skills.length >= 9}
           />
-          <button type="button" onClick={addSkill} disabled={data.skills.length >= 9} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+          <button type="button" onClick={addSkill} disabled={data.skills.length >= 9} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
             <Plus className="w-4 h-4" />
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
           {data.skills.map((skill, idx) => (
-            <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+            <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
               {skill}
-              <button type="button" onClick={() => removeSkill(idx)} className="text-purple-700 hover:text-purple-900">
+              <button type="button" onClick={() => removeSkill(idx)} className="text-blue-700 hover:text-blue-900">
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -563,14 +500,14 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-600 rounded-full"></span>
+            <span className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></span>
             Education
           </h2>
           <button
             type="button"
             onClick={addEducation}
             disabled={data.education.length >= 2}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
             Tambah {data.education.length >= 2 && "(Maks 2)"}
@@ -592,7 +529,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                     type="text"
                     value={edu.university}
                     onChange={(e) => updateEducation(edu.id, "university", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Contoh: Universitas Indonesia"
                   />
                 </div>
@@ -602,7 +539,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                     type="text"
                     value={edu.major}
                     onChange={(e) => updateEducation(edu.id, "major", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Contoh: S1 JURUSAN TELEKOMUNIKASI"
                   />
                 </div>
@@ -613,7 +550,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                       type="text"
                       value={edu.startDate || ""}
                       onChange={(e) => updateEducation(edu.id, "startDate", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Contoh: 2014"
                     />
                   </div>
@@ -623,7 +560,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                       type="text"
                       value={edu.endDate || ""}
                       onChange={(e) => updateEducation(edu.id, "endDate", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Contoh: 2016"
                     />
                   </div>
@@ -650,16 +587,8 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
   return (
     <div>
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Creative Management CV Builder</h1>
-            <p className="text-gray-600">Isi form di sebelah kiri dan lihat preview realtime di sebelah kanan</p>
-          </div>
-          <button type="button" onClick={handleFillDummyData} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-md">
-            <Wand2 className="w-4 h-4" />
-            Isi dengan Contoh CV
-          </button>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Creative Management CV Builder</h1>
+        <p className="text-gray-600">Isi form di sebelah kiri dan lihat preview realtime di sebelah kanan</p>
       </div>
 
       {HeaderSection}
