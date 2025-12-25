@@ -65,7 +65,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <span className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></span>
-          Header & Profil Profesional
+          Informasi Pribadi & Profil
         </h2>
         <div className="space-y-4">
           <div>
@@ -109,7 +109,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               value={data.fullName}
               onChange={(e) => updateField("fullName", e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Contoh: John Doe"
+              placeholder="Contoh: Kevin Pratama"
             />
           </div>
           <div>
@@ -145,7 +145,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
               value={data.email}
               onChange={(e) => updateField("email", e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Contoh: john.doe@email.com"
+              placeholder="Contoh: kevin.pratama@gmail.com"
             />
           </div>
           <div>
@@ -162,7 +162,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Link LinkedIn <span className="text-red-500">*</span>
+              Link <span className="text-red-500">*</span>
             </label>
             <input
               type="url"
@@ -176,7 +176,11 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Summary (Profil) <span className="text-gray-500 text-xs">(3-4 kalimat)</span>
             </label>
-            <RichTextEditor value={data.summary} onChange={(value) => updateField("summary", value)} placeholder="Contoh: Lulusan Manajemen dengan spesialisasi Operasional yang memiliki ketertarikan tinggi pada optimasi proses bisnis..." />
+            <RichTextEditor
+              value={data.summary}
+              onChange={(value) => updateField("summary", value)}
+              placeholder="Contoh: Lulusan Manajemen dengan spesialisasi Operasional yang memiliki ketertarikan tinggi pada optimasi proses bisnis..."
+            />
           </div>
         </div>
       </div>
@@ -392,7 +396,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                     onChange={(value) => updateExperienceDescription(exp.id, value)}
                     placeholder={
                       exp.type === "work"
-                        ? "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc a ultricies tortor. In vestibulum vitae velit nec viverra. Proin non ultrices ex. Integer mattis dui vel pretium euismod."
+                        ? "Contoh: Mengelola operasional harian untuk tim 15 orang, meningkatkan produktivitas 25%. Mengimplementasikan sistem tracking project digital."
                         : "Contoh: Mengelola tim 15 orang untuk event tahunan dengan budget 50 juta rupiah. Mengoptimalkan alokasi sumber daya untuk 5 program kerja divisi."
                     }
                   />
@@ -501,7 +505,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <span className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></span>
-            Education
+            Pendidikan
           </h2>
           <button
             type="button"
@@ -572,7 +576,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
                   <RichTextEditor
                     value={edu.description || ""}
                     onChange={(value) => updateEducation(edu.id, "description", value)}
-                    placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc a ultricies tortor. In vestibulum vitae velit nec viverra. Proin non ultrices ex. Integer mattis dui vel pretium euismod."
+                    placeholder="Contoh: IPK 3.75/4.00 - Cum Laude. Fokus studi: Manajemen Operasional. Aktif dalam organisasi kemahasiswaan."
                   />
                 </div>
               </div>

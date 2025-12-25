@@ -243,7 +243,13 @@ export default function CreativeManagementPreview({ data }: CreativeManagementPr
                 <span className="w-1 h-1 bg-white rounded-full"></span>
               </>
             )}
-            {data.location && <span>{data.location}</span>}
+            {data.location && (
+              <>
+                <span>{data.location}</span>
+                {data.linkedin && <span className="w-1 h-1 bg-white rounded-full"></span>}
+              </>
+            )}
+            {data.linkedin && <span>{data.linkedin}</span>}
           </div>
         </footer>
       </article>

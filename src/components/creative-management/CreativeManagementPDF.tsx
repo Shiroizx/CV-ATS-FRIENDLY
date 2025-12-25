@@ -14,10 +14,10 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: "#1e3a5f",
-    padding: "20pt 28pt",
+    padding: "18pt 28pt",
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 16,
+    gap: 14,
   },
   profilePhoto: {
     width: 75,
@@ -29,30 +29,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fullName: {
-    fontSize: 28,
+    fontSize: 27,
     fontWeight: "bold",
     color: "#ffffff",
     marginBottom: 4,
   },
   profession: {
-    fontSize: 15,
+    fontSize: 14.5,
     color: "#ffffff",
   },
   content: {
-    padding: "18pt 28pt",
-    paddingBottom: "60pt",
+    padding: "14pt 28pt",
+    paddingBottom: "52pt",
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
-    gap: 10,
+    marginBottom: 7,
+    gap: 9,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#111827",
   },
@@ -62,15 +62,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#d1d5db",
   },
   summaryText: {
-    fontSize: 11,
-    lineHeight: 1.5,
+    fontSize: 10.5,
+    lineHeight: 1.45,
     color: "#374151",
     textAlign: "justify",
   },
   eduItem: {
-    marginBottom: 16,
+    marginBottom: 12,
     flexDirection: "row",
-    gap: 8,
+    gap: 7,
   },
   eduDate: {
     fontSize: 9,
@@ -81,19 +81,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eduTitle: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "bold",
     color: "#111827",
-    marginBottom: 5,
+    marginBottom: 4,
   },
   eduDesc: {
     fontSize: 9,
-    lineHeight: 1.4,
+    lineHeight: 1.35,
     color: "#374151",
-    marginTop: 3,
+    marginTop: 2.5,
   },
   expItem: {
-    marginBottom: 18,
+    marginBottom: 12,
   },
   expDate: {
     fontSize: 9,
@@ -101,16 +101,16 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   expTitle: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "bold",
     color: "#111827",
-    marginBottom: 5,
+    marginBottom: 4,
   },
   expDesc: {
     fontSize: 9,
-    lineHeight: 1.4,
+    lineHeight: 1.35,
     color: "#374151",
-    marginTop: 3,
+    marginTop: 2.5,
   },
   skillsGrid: {
     flexDirection: "row",
@@ -126,17 +126,17 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: "#1e3a5f",
-    padding: "14pt 28pt",
+    padding: "12pt 28pt",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 7,
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
   },
   footerText: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#ffffff",
   },
 });
@@ -309,6 +309,7 @@ export function CreativeManagementPDF({ data }: CreativeManagementPDFProps) {
           {data.whatsapp && <Text style={styles.footerText}>{data.whatsapp}</Text>}
           {data.email && <Text style={styles.footerText}> • {data.email}</Text>}
           {data.location && <Text style={styles.footerText}> • {data.location}</Text>}
+          {data.linkedin && <Text style={styles.footerText}> • {data.linkedin}</Text>}
         </View>
       </Page>
     </Document>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Download, Eye, X } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
+import Swal from "sweetalert2";
 import type { CreativeManagementData } from "../types/creativeManagement";
 import { initialCreativeManagementData } from "../types/creativeManagement";
 import CreativeManagementForm from "../components/creative-management/CreativeManagementForm";
@@ -12,8 +13,6 @@ export default function CreativeManagementBuilderPage() {
   const [cvData, setCvData] = useState<CreativeManagementData>(initialCreativeManagementData);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showSplash, setShowSplash] = useState(false);
-  const [isIOSSafari, setIsIOSSafari] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -22,8 +21,41 @@ export default function CreativeManagementBuilderPage() {
     const isiOS = /iPhone|iPad|iPod/i.test(ua);
     const isSafari = /Safari/i.test(ua) && !/Chrome/i.test(ua);
 
-    setIsIOSSafari(isiOS && isSafari);
-    setShowSplash(true);
+    // Show SweetAlert2 instead of custom splash
+    const htmlContent = isiOS && isSafari
+      ? `
+        <p class="text-gray-700 mb-3">Gunakan tombol <strong>Download PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.</p>
+        <p class="text-sm text-gray-600 mb-3">Untuk hasil terbaik, pastikan semua data sudah terisi dengan lengkap sebelum download.</p>
+        <div class="mt-3 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-900">
+          📱 <strong>Pengguna iPhone/iPad:</strong> Jika ingin menyimpan CV sebagai PDF dengan hasil yang lebih maksimal, disarankan menggunakan aplikasi <strong>Chrome</strong> di iOS, atau simpan/print dari laptop/PC.
+        </div>
+      `
+      : `
+        <p class="text-gray-700 mb-2">Gunakan tombol <strong>Download PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.</p>
+        <p class="text-sm text-gray-600">Untuk hasil terbaik, pastikan semua data sudah terisi dengan lengkap sebelum download.</p>
+      `;
+
+    Swal.fire({
+      icon: 'info',
+      title: 'Cara Menyimpan CV',
+      html: htmlContent,
+      confirmButtonText: 'Mengerti',
+      showClass: {
+        popup: 'animate__animated animate__fadeInDown animate__faster',
+        backdrop: 'animate__animated animate__fadeIn'
+      },
+      hideClass: {
+        popup: 'animate__animated animate__fadeOutUp animate__faster',
+        backdrop: 'animate__animated animate__fadeOut'
+      },
+      customClass: {
+        popup: 'rounded-2xl shadow-2xl',
+        title: 'text-2xl font-bold',
+        htmlContainer: 'text-left',
+        confirmButton: 'px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-blue-600 hover:bg-blue-700 text-white',
+      },
+      buttonsStyling: false,
+    });
   }, []);
 
   const handleFormChange = (newData: CreativeManagementData) => {
@@ -44,7 +76,7 @@ export default function CreativeManagementBuilderPage() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+      alert("Gagal membuat PDF. Silakan coba lagi.");
     } finally {
       setIsDownloading(false);
     }
@@ -73,56 +105,11 @@ export default function CreativeManagementBuilderPage() {
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              {isDownloading ? "Generating PDF..." : "Download PDF"}
+              {isDownloading ? "Membuat PDF..." : "Download PDF"}
             </button>
           </div>
         </div>
       </header>
-
-      {/* Splash Alert */}
-      {showSplash && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 print:hidden">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
-            <button
-              type="button"
-              onClick={() => setShowSplash(false)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-              aria-label="Tutup pemberitahuan"
-            >
-              ✕
-            </button>
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                <span className="text-xl">ℹ️</span>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">Cara Menyimpan CV</h2>
-                <p className="text-sm text-gray-700 mb-2">
-                  Gunakan tombol <strong>Download PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.
-                </p>
-                <p className="text-xs text-gray-600 mb-2">
-                  Untuk hasil terbaik, pastikan semua data sudah terisi dengan lengkap sebelum download.
-                </p>
-                {isIOSSafari && (
-                  <div className="mt-2 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-900">
-                    📱 <strong>Pengguna iPhone/iPad:</strong> Jika ingin menyimpan CV sebagai PDF dengan hasil yang lebih maksimal, disarankan menggunakan aplikasi
-                    <strong> Chrome</strong> di iOS, atau simpan/print dari laptop/PC.
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSplash(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Mengerti
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Split Screen Layout */}
       <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] print:hidden">
@@ -154,29 +141,31 @@ export default function CreativeManagementBuilderPage() {
       </button>
 
       {/* Preview Modal (Mobile Only) */}
-      {showPreviewModal && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-white">
-          {/* Modal Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Preview CV</h2>
-            <button
-              onClick={() => setShowPreviewModal(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
+      {
+        showPreviewModal && (
+          <div className="lg:hidden fixed inset-0 z-50 bg-white">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Preview CV</h2>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            {/* Modal Content */}
+            <div className="overflow-y-auto h-[calc(100vh-57px)] bg-gray-100 p-4">
+              <CreativeManagementPreview data={cvData} />
+            </div>
           </div>
-          {/* Modal Content */}
-          <div className="overflow-y-auto h-[calc(100vh-57px)] bg-gray-100 p-4">
-            <CreativeManagementPreview data={cvData} />
-          </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Print View */}
       <div className="hidden print:block">
         <CreativeManagementPreview data={cvData} />
       </div>
-    </div>
+    </div >
   );
 }

@@ -18,6 +18,46 @@ body {
   min-height: 100vh;
 }
 
+/* Shimmer Animation for Skeleton Loading */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(100%);
+  }
+
+  50.01% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+/* Fade In Animation for Mobile Menu */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
 /* TipTap Editor Styles */
 .ProseMirror {
   outline: none;
@@ -72,6 +112,7 @@ body {
 
 /* Print Styles */
 @media print {
+
   /* Hide navigation buttons */
   .print\:hidden {
     display: none !important;
@@ -115,7 +156,8 @@ body {
 
   /* Don't override article padding for Creative Management CV */
   article:not(.creative-management-cv article) {
-    width: 7.94in; /* ~A4 width in print area */
+    width: 7.94in;
+    /* ~A4 width in print area */
     max-width: 7.94in;
     margin: 0 auto !important;
     padding: 0.4in !important;
@@ -143,22 +185,26 @@ body {
 
   /* Preserve Creative Management CV styling - use exact Tailwind sizes */
   .creative-management-cv header h1 {
-    font-size: 2.25rem !important; /* text-4xl */
+    font-size: 2.25rem !important;
+    /* text-4xl */
     margin-bottom: 0.5rem !important;
   }
 
   @media print and (min-width: 768px) {
     .creative-management-cv header h1 {
-      font-size: 3rem !important; /* md:text-5xl */
+      font-size: 3rem !important;
+      /* md:text-5xl */
     }
   }
 
   .creative-management-cv header p {
-    font-size: 1.25rem !important; /* text-xl */
+    font-size: 1.25rem !important;
+    /* text-xl */
   }
 
   .creative-management-cv h2 {
-    font-size: 1.5rem !important; /* text-2xl */
+    font-size: 1.5rem !important;
+    /* text-2xl */
     margin-bottom: 1rem !important;
   }
 
@@ -169,7 +215,8 @@ body {
   .creative-management-cv .prose,
   .creative-management-cv .prose p,
   .creative-management-cv .prose span {
-    font-size: 0.875rem !important; /* prose-sm */
+    font-size: 0.875rem !important;
+    /* prose-sm */
     line-height: 1.6 !important;
   }
 
@@ -180,11 +227,11 @@ body {
     line-height: 1.6 !important;
   }
 
-  .creative-management-cv .space-y-6 > * + * {
+  .creative-management-cv .space-y-6>*+* {
     margin-top: 1.5rem !important;
   }
 
-  .creative-management-cv .space-y-2 > * + * {
+  .creative-management-cv .space-y-2>*+* {
     margin-top: 0.5rem !important;
   }
 
@@ -264,11 +311,11 @@ body {
   }
 
   /* Reduce space-y gaps - but not for Creative Management CV */
-  .space-y-4:not(.creative-management-cv .space-y-4) > * + * {
+  .space-y-4:not(.creative-management-cv .space-y-4)>*+* {
     margin-top: 0.5rem !important;
   }
 
-  .space-y-1:not(.creative-management-cv .space-y-1) > * + * {
+  .space-y-1:not(.creative-management-cv .space-y-1)>*+* {
     margin-top: 0.125rem !important;
   }
 
@@ -317,7 +364,7 @@ body {
   }
 
   /* Preserve main content padding */
-  .creative-management-cv > article > div {
+  .creative-management-cv>article>div {
     padding-left: 0.75in !important;
     padding-right: 0.75in !important;
     padding-top: 2rem !important;
@@ -349,6 +396,7 @@ body {
 /* Tambahan jarak atas khusus print di desktop (mobile jangan diubah) */
 @media print and (min-width: 768px) {
   article {
-    padding-top: 0.7in !important; /* sedikit lebih longgar dari default 0.4in */
+    padding-top: 0.7in !important;
+    /* sedikit lebih longgar dari default 0.4in */
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { CVData } from "../../types";
 import { ArrowLeft, Printer } from "lucide-react";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import Swal from "sweetalert2";
 import PreviewHeader from "./PreviewHeader";
 import PreviewEducation from "./PreviewEducation";
 import PreviewExperience from "./PreviewExperience";
@@ -28,7 +29,6 @@ const formatDate = (dateString: string): string => {
 };
 
 export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
-  const [showSplash, setShowSplash] = useState(false);
   const [isIOSSafari, setIsIOSSafari] = useState(false);
 
   // Pastikan saat masuk ke halaman preview, posisi scroll di atas dan tampilkan splash sekali
@@ -40,45 +40,46 @@ export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
     const isSafari = /Safari/i.test(ua) && !/Chrome/i.test(ua);
 
     setIsIOSSafari(isiOS && isSafari);
-    setShowSplash(true);
-  }, []);
+
+    // Show SweetAlert2 instead of custom splash
+    const htmlContent = isIOSSafari && isSafari
+      ? `
+        <p class="text-gray-700 mb-3">Gunakan tombol <strong>Print / Save as PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.</p>
+        <p class="text-sm text-gray-600 mb-3">Untuk hasil terbaik, pastikan ukuran kertas A4 dan orientasi Portrait saat menyimpan atau mencetak.</p>
+        <div class="mt-3 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-900">
+          📱 <strong>Pengguna iPhone/iPad:</strong> Jika ingin menyimpan CV sebagai PDF dengan hasil yang lebih maksimal, disarankan menggunakan aplikasi <strong>Chrome</strong> di iOS, atau simpan/print dari laptop/PC.
+        </div>
+      `
+      : `
+        <p class="text-gray-700 mb-2">Gunakan tombol <strong>Print / Save as PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.</p>
+        <p class="text-sm text-gray-600">Untuk hasil terbaik, pastikan ukuran kertas A4 dan orientasi Portrait saat menyimpan atau mencetak.</p>
+      `;
+
+    Swal.fire({
+      icon: 'info',
+      title: 'Cara Menyimpan CV',
+      html: htmlContent,
+      confirmButtonText: 'Mengerti',
+      showClass: {
+        popup: 'animate__animated animate__fadeInDown animate__faster',
+        backdrop: 'animate__animated animate__fadeIn'
+      },
+      hideClass: {
+        popup: 'animate__animated animate__fadeOutUp animate__faster',
+        backdrop: 'animate__animated animate__fadeOut'
+      },
+      customClass: {
+        popup: 'rounded-2xl shadow-2xl',
+        title: 'text-2xl font-bold',
+        htmlContainer: 'text-left',
+        confirmButton: 'px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-blue-600 hover:bg-blue-700 text-white',
+      },
+      buttonsStyling: false,
+    });
+  }, [isIOSSafari]);
 
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white relative">
-      {/* Splash alert khusus halaman preview */}
-      {showSplash && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 print:hidden">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
-            <button type="button" onClick={() => setShowSplash(false)} className="absolute right-3 top-3 text-gray-400 hover:text-gray-600" aria-label="Tutup pemberitahuan">
-              ✕
-            </button>
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                <span className="text-xl">ℹ️</span>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">Cara Menyimpan CV</h2>
-                <p className="text-sm text-gray-700 mb-2">
-                  Gunakan tombol <strong>Print / Save as PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.
-                </p>
-                <p className="text-xs text-gray-600 mb-2">Untuk hasil terbaik, pastikan ukuran kertas A4 dan orientasi Portrait saat menyimpan atau mencetak.</p>
-                {isIOSSafari && (
-                  <div className="mt-2 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-900">
-                    📱 <strong>Pengguna iPhone/iPad:</strong> Jika ingin menyimpan CV sebagai PDF dengan hasil yang lebih maksimal, disarankan menggunakan aplikasi
-                    <strong> Chrome</strong> di iOS, atau simpan/print dari laptop/PC.
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-3">
-              <button type="button" onClick={() => setShowSplash(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-                Mengerti
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <nav className="print:hidden sticky top-0 bg-white border-b border-gray-200 shadow-sm z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:justify-between">
           <button onClick={onBack} className="flex items-center justify-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium">
