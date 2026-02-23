@@ -221,7 +221,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
       );
     };
 
-    const updateExperience = (id: string, field: keyof CreativeExperience, value: any) => {
+    const updateExperience = (id: string, field: keyof CreativeExperience, value: string | boolean) => {
       updateField(
         "experiences",
         data.experiences.map((exp) => (exp.id === id ? { ...exp, [field]: value } : exp))
@@ -493,7 +493,7 @@ export default function CreativeManagementForm({ data, onChange }: CreativeManag
       );
     };
 
-    const updateEducation = (id: string, field: keyof CreativeEducation, value: any) => {
+    const updateEducation = (id: string, field: keyof CreativeEducation, value: string | boolean) => {
       updateField(
         "education",
         data.education.map((edu) => (edu.id === id ? { ...edu, [field]: value } : edu))

@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import MainPage from "./pages/MainPage";
 import CVBuilderPage from "./pages/CVBuilderPage";
 import CreativeManagementBuilderPage from "./pages/CreativeManagementBuilderPage";
+import PortfolioBuilderPage from "./pages/PortfolioBuilderPage";
 import DonatePage from "./pages/DonatePage";
 import ChangelogPage from "./pages/ChangelogPage";
 
@@ -18,6 +19,7 @@ function App() {
           <Route path="/" element={<MainPage />} />
           <Route path="/builder" element={<CVBuilderPage />} />
           <Route path="/builder/creative-management" element={<CreativeManagementBuilderPage />} />
+          <Route path="/builder/portfolio" element={<PortfolioBuilderPage />} />
           <Route path="/donate" element={<DonatePage />} />
           <Route path="/changelog" element={<ChangelogPage />} />
         </Routes>

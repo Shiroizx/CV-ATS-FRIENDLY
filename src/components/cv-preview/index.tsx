@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import type { CVData } from "../../types";
 import { ArrowLeft, Printer } from "lucide-react";
 import { sanitizeHtml } from "../../utils/sanitizeHtml";
@@ -29,20 +29,18 @@ const formatDate = (dateString: string): string => {
 };
 
 export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
-  const [isIOSSafari, setIsIOSSafari] = useState(false);
+  const isIOSSafari = useMemo(() => {
+    const ua = navigator.userAgent || navigator.vendor || (window as unknown as { opera?: string }).opera || "";
+    const isiOS = /iPhone|iPad|iPod/i.test(ua);
+    const isSafari = /Safari/i.test(ua) && !/Chrome/i.test(ua);
+    return isiOS && isSafari;
+  }, []);
 
   // Pastikan saat masuk ke halaman preview, posisi scroll di atas dan tampilkan splash sekali
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    const ua = navigator.userAgent || navigator.vendor || (window as unknown as { opera?: string }).opera || "";
-    const isiOS = /iPhone|iPad|iPod/i.test(ua);
-    const isSafari = /Safari/i.test(ua) && !/Chrome/i.test(ua);
-
-    setIsIOSSafari(isiOS && isSafari);
-
-    // Show SweetAlert2 instead of custom splash
-    const htmlContent = isIOSSafari && isSafari
+    const htmlContent = isIOSSafari
       ? `
         <p class="text-gray-700 mb-3">Gunakan tombol <strong>Print / Save as PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.</p>
         <p class="text-sm text-gray-600 mb-3">Untuk hasil terbaik, pastikan ukuran kertas A4 dan orientasi Portrait saat menyimpan atau mencetak.</p>

@@ -172,10 +172,15 @@ const TextType = ({
     const shouldHideCursor =
         hideCursorWhileTyping && (currentCharIndex < textArray[currentTextIndex].length || isDeleting);
 
+    const setContainerRef = useCallback((node: HTMLElement | null) => {
+        containerRef.current = node;
+    }, []);
+
+    // eslint-disable-next-line react-hooks/refs
     return createElement(
         Component,
         {
-            ref: containerRef,
+            ref: setContainerRef,
             className: `inline-block whitespace-pre-wrap tracking-tight ${className}`,
             ...props
         },

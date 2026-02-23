@@ -20,4 +20,10 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['**/components/ui/TextType.tsx'],
+    rules: {
+      'react-hooks/refs': 'off',
+    },
+  },
 ])

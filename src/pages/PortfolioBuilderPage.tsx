@@ -1,0 +1,344 @@
+import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Download, Eye, X, Wand2 } from "lucide-react";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
+import Swal from "sweetalert2";
+import type { PortfolioData } from "../types/portfolio";
+import { initialPortfolioData } from "../types/portfolio";
+import PortfolioForm from "../components/portfolio/PortfolioForm";
+import PortfolioPreview from "../components/portfolio/PortfolioPreview";
+
+// A4 at 96 dpi
+const A4_WIDTH_PX = 794;
+const A4_HEIGHT_PX = 1123;
+
+export default function PortfolioBuilderPage() {
+    const [portfolioData, setPortfolioData] =
+        useState<PortfolioData>(initialPortfolioData);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+    // Refs for PDF capture
+    const hiddenPreviewRef = useRef<HTMLDivElement>(null);  // outer A4 clip box
+    const hiddenContentRef = useRef<HTMLDivElement>(null);  // inner content (gets scaled)
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+        Swal.fire({
+            icon: "info",
+            title: "Portfolio Builder",
+            html: `
+        <p class="text-gray-700 mb-2">Buat portofolio profesional untuk menampilkan proyek-proyek terbaikmu.</p>
+        <p class="text-sm text-gray-600">Isi form di sebelah kiri, lihat preview di sebelah kanan, lalu download sebagai PDF.</p>
+      `,
+            confirmButtonText: "Mulai Buat Portfolio",
+            showClass: { popup: "animate__animated animate__fadeInDown animate__faster", backdrop: "animate__animated animate__fadeIn" },
+            hideClass: { popup: "animate__animated animate__fadeOutUp animate__faster", backdrop: "animate__animated animate__fadeOut" },
+            customClass: {
+                popup: "rounded-2xl shadow-2xl",
+                title: "text-2xl font-bold",
+                htmlContainer: "text-left",
+                confirmButton: "px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-teal-600 hover:bg-teal-700 text-white",
+            },
+            buttonsStyling: false,
+        });
+    }, []);
+
+    const handleLoadDummyData = () => {
+        setPortfolioData({
+            profilePhoto: "",
+            fullName: "Adlil Dzil",
+            title: "Mahasiswa Ilmu Komunikasi & Content Creator",
+            email: "adlil@example.com",
+            phone: "081234567890",
+            location: "Jakarta, Indonesia",
+            website: "https://mysite.com",
+            linkedin: "https://linkedin.com/in/adlil",
+            github: "https://instagram.com/adlil", // Repurposed for another link
+            themeColor: "#4f46e5",
+            summary: "Mahasiswa tingkat akhir Ilmu Komunikasi dengan minat kuat pada Digital Marketing, Kampanye Sosial, dan Videografi. Aktif dalam berbagai organisasi kampus dan memiliki pengalaman menjalankan kampanye media sosial yang berhasil meningkatkan engagement hingga 40%.",
+            projects: [
+                {
+                    id: crypto.randomUUID(),
+                    title: "Kampanye Kesadaran Lingkungan 'Hijaukan Sekolah'",
+                    category: "Proyek Organisasi",
+                    description: "Memimpin tim divisi Humas untuk mengkampanyekan pengurangan plastik sekali pakai di area kampus. Mengorganisir seminar dan lomba daur ulang.",
+                    techStack: "Public Speaking, Canva, Manajemen Acara, Instagram Ads",
+                    projectUrl: "https://instagram.com/hijaukansekolah",
+                },
+                {
+                    id: crypto.randomUUID(),
+                    title: "Penelitian Perilaku Konsumen Gen-Z",
+                    category: "Tugas Akhir / Riset",
+                    description: "Riset kualitatif dan kuantitatif terhadap 500+ responden mengenai kebiasaan belanja online menggunakan metode survei digital.",
+                    techStack: "Google Forms, SPSS, Analisis Data, Microsoft Excel",
+                    projectUrl: "https://medium.com/@adlil/riset-gen-z",
+                },
+                {
+                    id: crypto.randomUUID(),
+                    title: "Film Pendek 'Cita-cita'",
+                    category: "Proyek Seni / Hobby",
+                    description: "Menulis naskah dan mengedit film pendek berdurasi 15 menit tentang perjuangan meraih mimpi. Didistribusikan melalui YouTube dan mendapatkan 10k penonton.",
+                    techStack: "Adobe Premiere Pro, Naskah, Videografi, Kerja Tim",
+                    projectUrl: "https://youtube.com/watch?v=...",
+                },
+                {
+                    id: crypto.randomUUID(),
+                    title: "Ketua Panitia Olimpiade Fisika Nasional",
+                    category: "Kepanitiaan / Organisasi",
+                    description: "Memimpin 50+ anggota panitia dalam menyelenggarakan kompetisi sains tingkat nasional yang diikuti lebih dari 300 sekolah di seluruh Indonesia.",
+                    techStack: "Kepemimpinan, Sponsored Proposal, Hubungan Masyarakat",
+                    projectUrl: "https://dokumentasionline.com",
+                }
+            ],
+            skills: [
+                "Public Speaking", "Digital Marketing", "Microsoft Excel",
+                "Video Editing", "Copywriting", "Manajemen Waktu",
+                "Kepemimpinan", "Desain Grafis (Canva)"
+            ],
+            education: [
+                {
+                    id: crypto.randomUUID(),
+                    institution: "Universitas Gadjah Mada",
+                    degree: "S1 Ilmu Komunikasi",
+                    year: "2021 - Sekarang",
+                },
+                {
+                    id: crypto.randomUUID(),
+                    institution: "Pertukaran Mahasiswa Merdeka",
+                    degree: "Studi Lintas Budaya (1 Semester)",
+                    year: "2023",
+                },
+                {
+                    id: crypto.randomUUID(),
+                    institution: "SMA Negeri 1 Jakarta",
+                    degree: "Jurusan IPS",
+                    year: "2018 - 2021",
+                }
+            ],
+        });
+
+        Swal.fire({ icon: "success", title: "Berhasil", text: "Data dummy berhasil dimuat!", toast: true, position: "top-end", showConfirmButton: false, timer: 2000 });
+    };
+
+    const handleFormChange = (newData: PortfolioData) => setPortfolioData(newData);
+
+    const handleDownloadPDF = async () => {
+        const captureBox = hiddenPreviewRef.current;
+        const contentEl = hiddenContentRef.current;
+        if (!captureBox || !contentEl) return;
+
+        setIsDownloading(true);
+        setIsDownloading(true);
+        try {
+            // 1. Reset everything
+            contentEl.style.transform = "none";
+            captureBox.style.height = "auto";
+            captureBox.style.overflow = "visible";
+
+            const targetRatio = A4_HEIGHT_PX / A4_WIDTH_PX; // ~1.4143
+
+            // 2. Binary search for optimal width where height/width <= A4 ratio
+            let minW = A4_WIDTH_PX;
+            let maxW = 3000;
+            let bestW = A4_WIDTH_PX;
+
+            for (let i = 0; i < 10; i++) {
+                const midW = (minW + maxW) / 2;
+                contentEl.style.width = `${midW}px`;
+                captureBox.style.width = `${midW}px`;
+                // Read scrollHeight to force synchronous layout
+                const h = contentEl.scrollHeight;
+
+                if (h / midW > targetRatio) {
+                    // Text is too un-wrapped, making it taller than A4 ratio -> go wider
+                    minW = midW;
+                } else {
+                    // It fits within A4 ratio, look for a tighter (smaller) width
+                    bestW = midW;
+                    maxW = midW;
+                }
+            }
+
+            // 3. Apply the optimal width
+            contentEl.style.width = `${bestW}px`;
+            captureBox.style.width = `${bestW}px`;
+
+            // KEY FIX for missing footer: 
+            // Force the container's physical height to exactly match A4 proportions.
+            // This ensures flex-1 pushes the footer all the way to the bottom!
+            const captureHeight = Math.ceil(bestW * targetRatio);
+            contentEl.style.minHeight = `${captureHeight}px`;
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            // 4. Scale down the entire perfectly-proportioned container to fit A4 exactly
+            const finalScale = A4_WIDTH_PX / bestW;
+            contentEl.style.transform = `scale(${finalScale})`;
+            contentEl.style.transformOrigin = "top left";
+
+            // Wait for browser transform
+            await new Promise((r) => setTimeout(r, 100));
+
+            // 5. Capture the exactly A4-sized visual viewport
+            const canvas = await html2canvas(captureBox, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: false,
+                backgroundColor: "#ffffff",
+                logging: false,
+                width: A4_WIDTH_PX,
+                height: A4_HEIGHT_PX,
+                windowWidth: A4_WIDTH_PX,
+            });
+
+            // 6. Reset everything
+            contentEl.style.transform = "none";
+            contentEl.style.width = `${A4_WIDTH_PX}px`;
+            contentEl.style.minHeight = "auto";
+            captureBox.style.width = `${A4_WIDTH_PX}px`;
+            captureBox.style.height = `${A4_HEIGHT_PX}px`;
+            captureBox.style.overflow = "hidden";
+
+            // 5. The captured canvas is exactly A4 proportions → fill the PDF page
+            const pdf = new jsPDF("portrait", "mm", "a4");
+            const pdfW = pdf.internal.pageSize.getWidth();
+            const pdfH = pdf.internal.pageSize.getHeight();
+            const imgData = canvas.toDataURL("image/png", 1.0);
+
+            pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+            pdf.save(`${portfolioData.fullName || "Portfolio"}_Portfolio.pdf`);
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            Swal.fire({
+                icon: "error",
+                title: "Gagal!",
+                text: "Gagal membuat PDF. Silakan coba lagi.",
+                confirmButtonText: "OK",
+                customClass: { confirmButton: "px-6 py-3 rounded-xl font-semibold bg-red-600 text-white" },
+                buttonsStyling: false,
+            });
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-16">
+                        <div className="flex items-center gap-3">
+                            <Link to="/" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                <ArrowLeft className="w-5 h-5 text-gray-600" />
+                            </Link>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                                    <span className="text-white text-sm font-bold">P</span>
+                                </div>
+                                <span className="text-lg font-bold text-gray-900">Portfolio Builder</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleLoadDummyData}
+                                type="button"
+                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-400 to-amber-500 text-white rounded-lg hover:from-orange-500 hover:to-amber-600 transition-all shadow-md"
+                            >
+                                <Wand2 className="w-4 h-4" />
+                                <span className="hidden sm:inline">Isi Dummy</span>
+                            </button>
+                            <button
+                                onClick={handleDownloadPDF}
+                                disabled={isDownloading}
+                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-lg hover:from-teal-600 hover:to-emerald-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Download className="w-4 h-4" />
+                                {isDownloading ? "Membuat PDF..." : "Download PDF"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {/* Split Screen */}
+            <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)]">
+                {/* Form */}
+                <div className="w-full lg:w-1/2 overflow-y-auto bg-white border-r border-gray-200">
+                    <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 pb-24 lg:pb-8">
+                        <PortfolioForm data={portfolioData} onChange={handleFormChange} />
+                    </div>
+                </div>
+                {/* Screen Preview */}
+                <div className="hidden lg:block lg:w-1/2 overflow-y-auto bg-gray-100">
+                    <div className="sticky top-0 bg-gray-100 border-b border-gray-200 px-4 py-3">
+                        <h2 className="text-sm font-semibold text-gray-700">Preview Portfolio</h2>
+                    </div>
+                    <div className="p-4 sm:p-6 lg:p-8">
+                        <PortfolioPreview data={portfolioData} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile floating preview */}
+            <button
+                onClick={() => setShowPreviewModal(true)}
+                className="lg:hidden fixed bottom-6 right-6 z-20 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all"
+            >
+                <Eye className="w-5 h-5" />
+                <span className="font-medium">Preview</span>
+            </button>
+
+            {/* Mobile preview modal */}
+            {showPreviewModal && (
+                <div className="lg:hidden fixed inset-0 z-50 bg-white">
+                    <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                        <h2 className="text-lg font-semibold text-gray-900">Preview Portfolio</h2>
+                        <button onClick={() => setShowPreviewModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <X className="w-5 h-5 text-gray-600" />
+                        </button>
+                    </div>
+                    <div className="overflow-y-auto h-[calc(100vh-57px)] bg-gray-100 p-4">
+                        <PortfolioPreview data={portfolioData} />
+                    </div>
+                </div>
+            )}
+
+            {/*
+        Off-screen PDF capture.
+        - Outer: fixed A4 box (794×1123px), overflow hidden → clips to 1 page
+        - Inner: renders at 794px width, natural height.
+          On download, CSS transform:scale() shrinks it to fit A4 height.
+        - html2canvas captures 794×1123 → addImage fills full A4 page
+        - Result: no stretch, no white bars, proportional scaling
+      */}
+            <div
+                ref={hiddenPreviewRef}
+                style={{
+                    position: "fixed",
+                    left: "-9999px",
+                    top: 0,
+                    width: `${A4_WIDTH_PX}px`,
+                    height: `${A4_HEIGHT_PX}px`,
+                    overflow: "hidden",
+                    backgroundColor: "white",
+                    zIndex: -1,
+                }}
+            >
+                <div
+                    ref={hiddenContentRef}
+                    style={{
+                        width: `${A4_WIDTH_PX}px`,
+                        display: "flex",
+                        flexDirection: "column"
+                    }}
+                >
+                    <PortfolioPreview data={portfolioData} fullHeight />
+                </div>
+            </div>
+        </div>
+    );
+}

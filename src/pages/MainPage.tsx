@@ -29,6 +29,14 @@ const cvTemplates = [
     color: "from-purple-400 via-pink-500 to-rose-500",
     popular: false,
   },
+  {
+    id: "portfolio",
+    name: "Portfolio",
+    description: "Buat portofolio profesional untuk menampilkan proyek-proyek terbaikmu",
+    features: ["Project showcase", "Skill badges", "PDF download"],
+    color: "from-teal-400 via-emerald-500 to-green-500",
+    popular: false,
+  },
 ];
 
 export default function MainPage() {
@@ -165,7 +173,13 @@ export default function MainPage() {
             {cvTemplates.map((template, index) => (
               <div
                 key={template.id}
-                onClick={() => navigate(template.id === "creative-management" ? "/builder/creative-management" : "/builder")}
+                onClick={() => {
+                  const routes: Record<string, string> = {
+                    "creative-management": "/builder/creative-management",
+                    "portfolio": "/builder/portfolio",
+                  };
+                  navigate(routes[template.id] || "/builder");
+                }}
                 className="group cursor-pointer relative bg-white rounded-3xl border-2 border-gray-100 overflow-hidden hover:shadow-2xl hover:border-transparent transition-all duration-300 hover:-translate-y-2"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -213,7 +227,7 @@ export default function MainPage() {
             ))}
 
             {/* Coming Soon Cards */}
-            {[1, 2].map((item) => (
+            {[1].map((item) => (
               <div key={item} className="relative bg-white rounded-3xl border-2 border-dashed border-gray-300 overflow-hidden">
                 <div className="h-56 bg-gray-100 p-8 flex items-center justify-center">
                   <Lottie animationData={comingSoonAnimation} loop={true} className="w-32 h-32" />

@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import type { Style } from "@react-pdf/types";
 import type { CreativeManagementData } from "../../types/creativeManagement";
 
 interface CreativeManagementPDFProps {
@@ -165,7 +166,7 @@ const stripHtml = (html: string): string => {
 };
 
 // Helper to render text with bullets - simple approach
-const renderTextWithBulletImages = (text: string, style: any) => {
+const renderTextWithBulletImages = (text: string, style: Style) => {
   // Split by newline and render each line as separate Text
   const lines = text.split('\n').filter(line => line.trim());
   return (

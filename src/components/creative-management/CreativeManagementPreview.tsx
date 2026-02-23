@@ -8,22 +8,6 @@ interface CreativeManagementPreviewProps {
 }
 
 export default function CreativeManagementPreview({ data }: CreativeManagementPreviewProps) {
-  // #region agent log
-  fetch("http://127.0.0.1:7242/ingest/4c4db015-1b90-47a8-95d7-ee1bde821bce", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      location: "CreativeManagementPreview.tsx:8",
-      message: "Preview component render started",
-      data: { fullName: data.fullName, educationCount: data.education.length, experienceCount: data.experiences.length, skillsCount: data.skills.length, hasSummary: !!data.summary },
-      timestamp: Date.now(),
-      sessionId: "debug-session",
-      runId: "run1",
-      hypothesisId: "A",
-    }),
-  }).catch(() => { });
-  // #endregion
-
   const formatDateRange = (start?: string, end?: string, isCurrent?: boolean) => {
     if (!start) return "";
     const startYear = start.includes("-") ? start.split("-")[0] : start;
@@ -44,28 +28,6 @@ export default function CreativeManagementPreview({ data }: CreativeManagementPr
   // Split skills into 3 columns
   const skillsPerColumn = Math.ceil(data.skills.length / 3);
   const skillsColumns = [data.skills.slice(0, skillsPerColumn), data.skills.slice(skillsPerColumn, skillsPerColumn * 2), data.skills.slice(skillsPerColumn * 2)];
-
-  // #region agent log
-  fetch("http://127.0.0.1:7242/ingest/4c4db015-1b90-47a8-95d7-ee1bde821bce", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      location: "CreativeManagementPreview.tsx:27",
-      message: "Preview layout info",
-      data: {
-        skillsPerColumn,
-        columnsCount: skillsColumns.length,
-        columnSizes: skillsColumns.map((c) => c.length),
-        previewClasses: "max-w-4xl mx-auto bg-white shadow-2xl",
-        headerClasses: "bg-[#1e3a5f] text-white px-8 md:px-12 print:px-[0.75in] pt-8 md:pt-12 print:pt-[0.75in] pb-6",
-      },
-      timestamp: Date.now(),
-      sessionId: "debug-session",
-      runId: "run1",
-      hypothesisId: "E",
-    }),
-  }).catch(() => { });
-  // #endregion
 
   return (
     <div className="max-w-4xl mx-auto bg-white shadow-2xl print:shadow-none print:max-w-none creative-management-cv">
@@ -119,23 +81,8 @@ export default function CreativeManagementPreview({ data }: CreativeManagementPr
               </div>
               <div className="space-y-4 print:space-y-2">
                 {data.education.map((edu, idx) => {
-                  // #region agent log
                   const eduDate = formatEducationDate(edu.startDate, edu.endDate);
                   const eduTitle = `${edu.university || "Universitas"} ${edu.major ? `| ${edu.major.toUpperCase()}` : ""}`;
-                  fetch("http://127.0.0.1:7242/ingest/4c4db015-1b90-47a8-95d7-ee1bde821bce", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      location: "CreativeManagementPreview.tsx:80",
-                      message: "Preview education item rendering",
-                      data: { index: idx, date: eduDate, titleLength: eduTitle.length, hasDescription: !!edu.description, descriptionLength: edu.description?.length || 0, classes: "flex items-start gap-4 mb-2" },
-                      timestamp: Date.now(),
-                      sessionId: "debug-session",
-                      runId: "run1",
-                      hypothesisId: "B",
-                    }),
-                  }).catch(() => { });
-                  // #endregion
                   return (
                     <div key={edu.id || idx}>
                       <div className="flex items-start gap-4 print:gap-2 mb-2 print:mb-1">
