@@ -56,7 +56,7 @@ export default function PortfolioPreview({ data, fullHeight }: PortfolioPreviewP
         >
             {/* ====== HEADER ====== */}
             <div
-                className="relative px-8 py-8 text-white flex-shrink-0"
+                className="relative px-6 py-8 sm:px-8 text-white flex-shrink-0"
                 style={{ background: `linear-gradient(135deg, ${theme}, #1e293b)` }}
             >
                 {/* Decorative dots */}
@@ -71,7 +71,7 @@ export default function PortfolioPreview({ data, fullHeight }: PortfolioPreviewP
                     </svg>
                 </div>
 
-                <div className="relative flex items-center gap-6">
+                <div className="relative flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6">
                     {data.profilePhoto ? (
                         <img
                             src={data.profilePhoto}
@@ -84,22 +84,22 @@ export default function PortfolioPreview({ data, fullHeight }: PortfolioPreviewP
                         </div>
                     )}
 
-                    <div className="min-w-0">
-                        <h1 className="text-3xl font-bold mb-1 truncate">
+                    <div className="min-w-0 flex flex-col items-center sm:items-start">
+                        <h1 className="text-2xl sm:text-3xl font-bold mb-1 truncate w-full">
                             {data.fullName || "Nama Lengkap"}
                         </h1>
                         {data.title && (
-                            <p className="text-lg text-white/90 font-medium">{data.title}</p>
+                            <p className="text-base sm:text-lg text-white/90 font-medium">{data.title}</p>
                         )}
                         {hasContact && (
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-300">
+                            <div className="flex flex-wrap justify-center sm:justify-start items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-gray-200">
                                 {data.email && <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{data.email}</span>}
                                 {data.phone && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{data.phone}</span>}
                                 {data.location && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{data.location}</span>}
                             </div>
                         )}
                         {(data.website || data.linkedin || data.github) && (
-                            <div className="flex flex-wrap items-center gap-3 mt-2">
+                            <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 mt-2.5">
                                 {data.website && <a href={data.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Globe className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.website)}</a>}
                                 {data.linkedin && <a href={data.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Linkedin className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.linkedin)}</a>}
                                 {data.github && <a href={data.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Github className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.github)}</a>}
@@ -110,7 +110,7 @@ export default function PortfolioPreview({ data, fullHeight }: PortfolioPreviewP
             </div>
 
             {/* ====== BODY — flex-1 pushes footer down ====== */}
-            <div className="px-8 py-6 space-y-6 flex-1">
+            <div className="px-6 py-6 sm:px-8 space-y-6 flex-1">
                 {/* About */}
                 {summary && (
                     <section>
@@ -127,7 +127,7 @@ export default function PortfolioPreview({ data, fullHeight }: PortfolioPreviewP
                         <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-3 pb-2 border-b-2" style={{ borderColor: `${theme}30` }}>
                             <FolderOpen className="w-5 h-5" style={{ color: theme }} /> Proyek
                         </h2>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-3">
                             {projects.map((project) => (
                                 <div key={project.id} className="group bg-gray-50 rounded-xl border border-gray-200 overflow-hidden hover:shadow-md hover:border-gray-300 transition-all">
                                     {project.imageUrl && (

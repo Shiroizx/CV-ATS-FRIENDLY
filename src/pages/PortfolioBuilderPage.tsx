@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Download, Eye, X, Wand2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Download, Eye } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import Swal from "sweetalert2";
@@ -17,7 +17,7 @@ export default function PortfolioBuilderPage() {
     const [portfolioData, setPortfolioData] =
         useState<PortfolioData>(initialPortfolioData);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const navigate = useNavigate();
 
     // Refs for PDF capture
     const hiddenPreviewRef = useRef<HTMLDivElement>(null);  // outer A4 clip box
@@ -46,82 +46,7 @@ export default function PortfolioBuilderPage() {
         });
     }, []);
 
-    const handleLoadDummyData = () => {
-        setPortfolioData({
-            profilePhoto: "",
-            fullName: "Adlil Dzil",
-            title: "Mahasiswa Ilmu Komunikasi & Content Creator",
-            email: "adlil@example.com",
-            phone: "081234567890",
-            location: "Jakarta, Indonesia",
-            website: "https://mysite.com",
-            linkedin: "https://linkedin.com/in/adlil",
-            github: "https://instagram.com/adlil", // Repurposed for another link
-            themeColor: "#4f46e5",
-            summary: "Mahasiswa tingkat akhir Ilmu Komunikasi dengan minat kuat pada Digital Marketing, Kampanye Sosial, dan Videografi. Aktif dalam berbagai organisasi kampus dan memiliki pengalaman menjalankan kampanye media sosial yang berhasil meningkatkan engagement hingga 40%.",
-            projects: [
-                {
-                    id: crypto.randomUUID(),
-                    title: "Kampanye Kesadaran Lingkungan 'Hijaukan Sekolah'",
-                    category: "Proyek Organisasi",
-                    description: "Memimpin tim divisi Humas untuk mengkampanyekan pengurangan plastik sekali pakai di area kampus. Mengorganisir seminar dan lomba daur ulang.",
-                    techStack: "Public Speaking, Canva, Manajemen Acara, Instagram Ads",
-                    projectUrl: "https://instagram.com/hijaukansekolah",
-                },
-                {
-                    id: crypto.randomUUID(),
-                    title: "Penelitian Perilaku Konsumen Gen-Z",
-                    category: "Tugas Akhir / Riset",
-                    description: "Riset kualitatif dan kuantitatif terhadap 500+ responden mengenai kebiasaan belanja online menggunakan metode survei digital.",
-                    techStack: "Google Forms, SPSS, Analisis Data, Microsoft Excel",
-                    projectUrl: "https://medium.com/@adlil/riset-gen-z",
-                },
-                {
-                    id: crypto.randomUUID(),
-                    title: "Film Pendek 'Cita-cita'",
-                    category: "Proyek Seni / Hobby",
-                    description: "Menulis naskah dan mengedit film pendek berdurasi 15 menit tentang perjuangan meraih mimpi. Didistribusikan melalui YouTube dan mendapatkan 10k penonton.",
-                    techStack: "Adobe Premiere Pro, Naskah, Videografi, Kerja Tim",
-                    projectUrl: "https://youtube.com/watch?v=...",
-                },
-                {
-                    id: crypto.randomUUID(),
-                    title: "Ketua Panitia Olimpiade Fisika Nasional",
-                    category: "Kepanitiaan / Organisasi",
-                    description: "Memimpin 50+ anggota panitia dalam menyelenggarakan kompetisi sains tingkat nasional yang diikuti lebih dari 300 sekolah di seluruh Indonesia.",
-                    techStack: "Kepemimpinan, Sponsored Proposal, Hubungan Masyarakat",
-                    projectUrl: "https://dokumentasionline.com",
-                }
-            ],
-            skills: [
-                "Public Speaking", "Digital Marketing", "Microsoft Excel",
-                "Video Editing", "Copywriting", "Manajemen Waktu",
-                "Kepemimpinan", "Desain Grafis (Canva)"
-            ],
-            education: [
-                {
-                    id: crypto.randomUUID(),
-                    institution: "Universitas Gadjah Mada",
-                    degree: "S1 Ilmu Komunikasi",
-                    year: "2021 - Sekarang",
-                },
-                {
-                    id: crypto.randomUUID(),
-                    institution: "Pertukaran Mahasiswa Merdeka",
-                    degree: "Studi Lintas Budaya (1 Semester)",
-                    year: "2023",
-                },
-                {
-                    id: crypto.randomUUID(),
-                    institution: "SMA Negeri 1 Jakarta",
-                    degree: "Jurusan IPS",
-                    year: "2018 - 2021",
-                }
-            ],
-        });
 
-        Swal.fire({ icon: "success", title: "Berhasil", text: "Data dummy berhasil dimuat!", toast: true, position: "top-end", showConfirmButton: false, timer: 2000 });
-    };
 
     const handleFormChange = (newData: PortfolioData) => setPortfolioData(newData);
 
@@ -243,14 +168,7 @@ export default function PortfolioBuilderPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleLoadDummyData}
-                                type="button"
-                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-400 to-amber-500 text-white rounded-lg hover:from-orange-500 hover:to-amber-600 transition-all shadow-md"
-                            >
-                                <Wand2 className="w-4 h-4" />
-                                <span className="hidden sm:inline">Isi Dummy</span>
-                            </button>
+
                             <button
                                 onClick={handleDownloadPDF}
                                 disabled={isDownloading}
@@ -285,27 +203,15 @@ export default function PortfolioBuilderPage() {
 
             {/* Mobile floating preview */}
             <button
-                onClick={() => setShowPreviewModal(true)}
+                onClick={() => {
+                    sessionStorage.setItem("portfolioPreviewData", JSON.stringify(portfolioData));
+                    navigate("/builder/portfolio/preview");
+                }}
                 className="lg:hidden fixed bottom-6 right-6 z-20 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all"
             >
                 <Eye className="w-5 h-5" />
                 <span className="font-medium">Preview</span>
             </button>
-
-            {/* Mobile preview modal */}
-            {showPreviewModal && (
-                <div className="lg:hidden fixed inset-0 z-50 bg-white">
-                    <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-gray-900">Preview Portfolio</h2>
-                        <button onClick={() => setShowPreviewModal(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                            <X className="w-5 h-5 text-gray-600" />
-                        </button>
-                    </div>
-                    <div className="overflow-y-auto h-[calc(100vh-57px)] bg-gray-100 p-4">
-                        <PortfolioPreview data={portfolioData} />
-                    </div>
-                </div>
-            )}
 
             {/*
         Off-screen PDF capture.

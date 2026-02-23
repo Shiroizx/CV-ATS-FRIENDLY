@@ -9,6 +9,7 @@ import CreativeManagementBuilderPage from "./pages/CreativeManagementBuilderPage
 import PortfolioBuilderPage from "./pages/PortfolioBuilderPage";
 import DonatePage from "./pages/DonatePage";
 import ChangelogPage from "./pages/ChangelogPage";
+import PortfolioMobilePreview from "./pages/PortfolioMobilePreview";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/builder" element={<CVBuilderPage />} />
           <Route path="/builder/creative-management" element={<CreativeManagementBuilderPage />} />
           <Route path="/builder/portfolio" element={<PortfolioBuilderPage />} />
+          <Route path="/builder/portfolio/preview" element={<PortfolioMobilePreview />} />
           <Route path="/donate" element={<DonatePage />} />
           <Route path="/changelog" element={<ChangelogPage />} />
         </Routes>
