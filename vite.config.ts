@@ -8,4 +8,7 @@ export default defineConfig({
   optimizeDeps: {
     include: ["@react-pdf/renderer"],
   },
+  server: {
+    host: true, // Listen on all local IPs
+  },
 });

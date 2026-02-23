@@ -17,6 +17,22 @@ const formatUrl = (url: string) => {
     }
 };
 
+const sanitizeUrl = (url: string) => {
+    if (!url) return "#";
+    // Prevent javascript:, vbscript:, data: etc. Only allow http/https, mailto, tel
+    const invalidProtocols = /^(javascript|vbscript|data):/i;
+    // Strip trailing/leading spaces to be sure
+    const cleanUrl = url.trim();
+    if (invalidProtocols.test(cleanUrl)) {
+        return "#";
+    }
+    // ensure links without protocol get https:// by default to avoid relative path resolution
+    if (!/^https?:\/\//i.test(cleanUrl) && !/^(mailto|tel):/i.test(cleanUrl)) {
+        return `https://${cleanUrl}`;
+    }
+    return cleanUrl;
+};
+
 // A4 at 96 dpi
 const A4_HEIGHT_PX = 1123;
 
@@ -100,9 +116,9 @@ export default function PortfolioPreview({ data, fullHeight }: PortfolioPreviewP
                         )}
                         {(data.website || data.linkedin || data.github) && (
                             <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 mt-2.5">
-                                {data.website && <a href={data.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Globe className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.website)}</a>}
-                                {data.linkedin && <a href={data.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Linkedin className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.linkedin)}</a>}
-                                {data.github && <a href={data.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Github className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.github)}</a>}
+                                {data.website && <a href={sanitizeUrl(data.website)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Globe className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.website)}</a>}
+                                {data.linkedin && <a href={sanitizeUrl(data.linkedin)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Linkedin className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.linkedin)}</a>}
+                                {data.github && <a href={sanitizeUrl(data.github)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors"><Github className="w-3.5 h-3.5 flex-shrink-0" />{formatUrl(data.github)}</a>}
                             </div>
                         )}
                     </div>
@@ -154,7 +170,7 @@ export default function PortfolioPreview({ data, fullHeight }: PortfolioPreviewP
                                         )}
                                         {project.projectUrl && (
                                             <div className="flex items-center gap-2 mt-1">
-                                                <a href={project.projectUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-medium hover:underline" style={{ color: theme }}>
+                                                <a href={sanitizeUrl(project.projectUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-medium hover:underline" style={{ color: theme }}>
                                                     <ExternalLink className="w-3 h-3 flex-shrink-0" />{formatUrl(project.projectUrl)}
                                                 </a>
                                             </div>

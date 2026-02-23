@@ -371,13 +371,34 @@ export default function MainPage() {
           </div>
 
           <div className="space-y-3">
+            {/* Version 1.3.0 */}
+            <details className="group bg-white rounded-lg border border-gray-200 overflow-hidden" open>
+              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-semibold text-gray-900">Version 1.3.0</span>
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">Latest</span>
+                  <span className="text-sm text-gray-500">23 Feb 2026</span>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="px-5 py-4 bg-gray-50 border-t border-gray-200">
+                <ul className="space-y-1.5 text-sm text-gray-700">
+                  <li>• Rilis fitur Portfolio Builder baru untuk memamerkan proyek terbaikmu</li>
+                  <li>• Kustomisasi warna tema dinamis dengan pilihan warna feminin</li>
+                  <li>• Halaman Preview yang responsif dan dioptimalkan khusus untuk layar Mobile</li>
+                  <li>• Peringatan khusus untuk unduhan PDF di iOS/iPhone</li>
+                </ul>
+              </div>
+            </details>
+
             {/* Version 1.2.0 */}
             <details className="group bg-white rounded-lg border border-gray-200 overflow-hidden">
               <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
                   <span className="text-base font-semibold text-gray-900">Version 1.2.0</span>
-                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">Latest</span>
-                  <span className="text-sm text-gray-500">25 Des 2024</span>
+                  <span className="text-sm text-gray-500">25 Des 2025</span>
                 </div>
                 <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -397,7 +418,7 @@ export default function MainPage() {
               <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
                   <span className="text-base font-semibold text-gray-900">Version 1.1.0</span>
-                  <span className="text-sm text-gray-500">24 Des 2024</span>
+                  <span className="text-sm text-gray-500">24 Des 2025</span>
                 </div>
                 <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -417,7 +438,7 @@ export default function MainPage() {
               <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
                   <span className="text-base font-semibold text-gray-900">Version 1.0.0</span>
-                  <span className="text-sm text-gray-500">22 Des 2024</span>
+                  <span className="text-sm text-gray-500">22 Des 2025</span>
                 </div>
                 <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

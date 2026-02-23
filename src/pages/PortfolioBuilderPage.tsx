@@ -26,24 +26,41 @@ export default function PortfolioBuilderPage() {
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
 
-        Swal.fire({
-            icon: "info",
-            title: "Portfolio Builder",
-            html: `
-        <p class="text-gray-700 mb-2">Buat portofolio profesional untuk menampilkan proyek-proyek terbaikmu.</p>
-        <p class="text-sm text-gray-600">Isi form di sebelah kiri, lihat preview di sebelah kanan, lalu download sebagai PDF.</p>
-      `,
-            confirmButtonText: "Mulai Buat Portfolio",
-            showClass: { popup: "animate__animated animate__fadeInDown animate__faster", backdrop: "animate__animated animate__fadeIn" },
-            hideClass: { popup: "animate__animated animate__fadeOutUp animate__faster", backdrop: "animate__animated animate__fadeOut" },
-            customClass: {
-                popup: "rounded-2xl shadow-2xl",
-                title: "text-2xl font-bold",
-                htmlContainer: "text-left",
-                confirmButton: "px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-teal-600 hover:bg-teal-700 text-white",
-            },
-            buttonsStyling: false,
-        });
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+        if (isIOS) {
+            Swal.fire({
+                icon: "warning",
+                text: "untuk pengguna iphone disarankan menggunakan chrome agar bisa download pdf nya",
+                timer: 5000,
+                timerProgressBar: true,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                customClass: {
+                    popup: "rounded-2xl shadow-2xl",
+                },
+            });
+        } else {
+            Swal.fire({
+                icon: "info",
+                title: "Portfolio Builder",
+                html: `
+            <p class="text-gray-700 mb-2">Buat portofolio profesional untuk menampilkan proyek-proyek terbaikmu.</p>
+            <p class="text-sm text-gray-600">Isi form di sebelah kiri, lihat preview di sebelah kanan, lalu download sebagai PDF.</p>
+          `,
+                confirmButtonText: "Mulai Buat Portfolio",
+                showClass: { popup: "animate__animated animate__fadeInDown animate__faster", backdrop: "animate__animated animate__fadeIn" },
+                hideClass: { popup: "animate__animated animate__fadeOutUp animate__faster", backdrop: "animate__animated animate__fadeOut" },
+                customClass: {
+                    popup: "rounded-2xl shadow-2xl",
+                    title: "text-2xl font-bold",
+                    htmlContainer: "text-left",
+                    confirmButton: "px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-teal-600 hover:bg-teal-700 text-white",
+                },
+                buttonsStyling: false,
+            });
+        }
     }, []);
 
 

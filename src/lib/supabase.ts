@@ -37,6 +37,32 @@ export async function uploadImage(file: File): Promise<string> {
 }
 
 /**
+ * Delete an image file from Supabase Storage using its public URL.
+ */
+export async function deleteImage(publicUrl: string): Promise<void> {
+    try {
+        if (!publicUrl.includes("supabase.co/storage/v1/object/public/portfolio-images/")) {
+            return; // Not a supabase url, ignore
+        }
+
+        const urlParts = publicUrl.split("/portfolio-images/");
+        if (urlParts.length !== 2) return;
+
+        const filePath = urlParts[1];
+
+        const { error } = await supabase.storage
+            .from("portfolio-images")
+            .remove([filePath]);
+
+        if (error) {
+            console.error("Failed to delete old image:", error.message);
+        }
+    } catch (err) {
+        console.error("Error deleting image:", err);
+    }
+}
+
+/**
  * Upload a base64 data URL to Supabase Storage and return the public URL.
  */
 export async function uploadDataUrl(dataUrl: string): Promise<string> {

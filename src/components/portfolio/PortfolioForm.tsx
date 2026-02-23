@@ -5,7 +5,7 @@ import {
     FileText, Camera, Link2, ChevronDown, ChevronUp, Loader2, Palette
 } from "lucide-react";
 import type { PortfolioData, PortfolioProject, PortfolioEducation } from "../../types/portfolio";
-import { uploadImage } from "../../lib/supabase";
+import { uploadImage, deleteImage } from "../../lib/supabase";
 import Swal from "sweetalert2";
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
@@ -58,6 +58,12 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         setUploadingPhoto(true);
         try {
             const publicUrl = await uploadImage(file);
+
+            // Delete old image if it's a supabase URL to prevent piling up
+            if (data.profilePhoto) {
+                await deleteImage(data.profilePhoto);
+            }
+
             updateField("profilePhoto", publicUrl);
         } catch (err) {
             console.error("Photo upload failed:", err);
@@ -95,7 +101,12 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         );
     };
 
-    const removeProject = (id: string) => {
+    const removeProject = async (id: string) => {
+        // Find project to check if it has an image to delete
+        const projectToDelete = data.projects.find((p) => p.id === id);
+        if (projectToDelete?.imageUrl) {
+            await deleteImage(projectToDelete.imageUrl);
+        }
         updateField("projects", data.projects.filter((p) => p.id !== id));
     };
 
@@ -117,6 +128,13 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         }
         try {
             const publicUrl = await uploadImage(file);
+
+            // Find old image to delete
+            const projectToUpdate = data.projects.find((p) => p.id === id);
+            if (projectToUpdate?.imageUrl) {
+                await deleteImage(projectToUpdate.imageUrl);
+            }
+
             updateProject(id, "imageUrl", publicUrl);
         } catch (err) {
             console.error("Project image upload failed:", err);

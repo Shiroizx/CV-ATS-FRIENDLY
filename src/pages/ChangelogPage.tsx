@@ -3,8 +3,20 @@ import { Calendar, Zap, Bug, Sparkles } from 'lucide-react';
 export default function ChangelogPage() {
     const changelog = [
         {
+            version: '1.3.0',
+            date: '23 Februari 2025',
+            type: 'feature',
+            changes: [
+                'Rilis fitur Portfolio Builder baru untuk memamerkan proyek terbaikmu',
+                'Kustomisasi warna tema dinamis dengan pilihan warna feminin',
+                'Halaman Preview yang responsif dan dioptimalkan khusus untuk layar Mobile',
+                'Peringatan dan auto-deteksi penelusur untuk unduhan PDF di iOS/iPhone',
+                'Penghapusan tombol Data Dummy untuk pengalaman aplikasi yang lebih rapi',
+            ],
+        },
+        {
             version: '1.2.0',
-            date: '25 Desember 2024',
+            date: '25 Desember 2025',
             type: 'feature',
             changes: [
                 'Menambahkan SweetAlert2 untuk notifikasi yang lebih modern',
@@ -15,7 +27,7 @@ export default function ChangelogPage() {
         },
         {
             version: '1.1.0',
-            date: '24 Desember 2024',
+            date: '24 Desember 2025',
             type: 'feature',
             changes: [
                 'Menambahkan template Creative Management CV',
@@ -26,7 +38,7 @@ export default function ChangelogPage() {
         },
         {
             version: '1.0.0',
-            date: '23 Desember 2024',
+            date: '23 Desember 2025',
             type: 'release',
             changes: [
                 'Rilis awal FreeBuild CV',
