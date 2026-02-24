@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Eye, X, Wand2 } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Download, Eye, X, Wand2, Save, Loader2 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import Swal from "sweetalert2";
 import type { CreativeManagementData } from "../types/creativeManagement";
@@ -11,14 +11,35 @@ import CreativeManagementPreview from "../components/creative-management/Creativ
 import { CreativeManagementPDF } from "../components/creative-management/CreativeManagementPDF";
 import { useAuth } from "../contexts/AuthContext";
 import { checkAndRecordGuestDownload, checkAndRecordUserDownload, getRemainingDownloads } from "../lib/downloadCredit";
+import { saveCreativeManagementResume, getCreativeManagementResumeById } from "../lib/resumeService";
 
 export default function CreativeManagementBuilderPage() {
   const [cvData, setCvData] = useState<CreativeManagementData>(initialCreativeManagementData);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
+  const [, setRemainingCredits] = useState<number | null>(null);
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [resumeName, setResumeName] = useState("My Creative CV");
+
+  // Load resume from DB if ID is present
+  useEffect(() => {
+    if (id && user) {
+      getCreativeManagementResumeById(id).then(({ data, error }) => {
+        if (data && data.cm_data) {
+          setCvData(data.cm_data);
+          setResumeName(data.resume_name);
+        } else if (error) {
+          console.error("Error loading resume:", error);
+          Swal.fire("Error", "Gagal memuat CV. Mungkin Anda tidak memiliki akses.", "error");
+          navigate("/");
+        }
+      });
+    }
+  }, [id, user, navigate]);
 
   useEffect(() => {
     document.title = "Creative & Management CV - FreeBuild CV";
@@ -81,7 +102,7 @@ export default function CreativeManagementBuilderPage() {
     // Download credit check
     const isLoggedIn = !!user;
     if (isLoggedIn) {
-      const result = await checkAndRecordUserDownload();
+      const result = await checkAndRecordUserDownload('creative_management', resumeName || cvData.fullName || 'Untitled');
       if (!result.allowed) {
         Swal.fire({
           icon: 'error',
@@ -144,6 +165,54 @@ export default function CreativeManagementBuilderPage() {
     }
   };
 
+  const handleSave = async () => {
+    if (!user) return;
+
+    let finalName = resumeName;
+    if (!id) {
+      const { value: name } = await Swal.fire({
+        title: 'Simpan CV',
+        input: 'text',
+        inputLabel: 'Nama CV',
+        inputValue: 'My Creative CV',
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal',
+        customClass: {
+          popup: 'rounded-2xl',
+          confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-blue-600 text-white',
+          cancelButton: 'px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700',
+        },
+        buttonsStyling: false,
+        inputValidator: (value) => {
+          if (!value) return 'Nama CV tidak boleh kosong!';
+        }
+      });
+      if (!name) return;
+      finalName = name;
+      setResumeName(name);
+    }
+
+    setIsSaving(true);
+    const { data, error } = await saveCreativeManagementResume(finalName, cvData, id);
+    setIsSaving(false);
+
+    if (error) {
+      Swal.fire('Error', error.message || 'Gagal menyimpan CV', 'error');
+    } else {
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: 'CV berhasil disimpan ke riwayat Anda.',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      if (!id && data) {
+        navigate(`/builder/creative-management/${data.id}`, { replace: true });
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 print:bg-white">
       {/* Header */}
@@ -169,13 +238,23 @@ export default function CreativeManagementBuilderPage() {
                 <Wand2 className="w-4 h-4" />
                 Isi Data Dummy
               </button>
+              {user && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {isSaving ? "Menyimpan..." : "Simpan"}
+                </button>
+              )}
               <button
                 onClick={handleDownloadPDF}
                 disabled={isDownloading}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" />
-                {isDownloading ? "Membuat PDF..." : remainingCredits !== null ? `Download PDF (${remainingCredits})` : "Download PDF"}
+                {isDownloading ? "Membuat PDF..." : "Download PDF"}
               </button>
             </div>
           </div>

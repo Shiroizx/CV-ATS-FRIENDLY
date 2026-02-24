@@ -114,8 +114,8 @@ export default function MyResumesPage() {
                                         <div className="bg-blue-50 p-3 rounded-xl">
                                             <FileText className="w-6 h-6 text-blue-600" />
                                         </div>
-                                        <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full">
-                                            {resume.template_type === 'ats_builder' ? 'ATS Friendly' : resume.template_type}
+                                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${resume.template_type === 'creative_management' ? 'bg-purple-100 text-purple-600' : resume.template_type === 'portfolio' ? 'bg-teal-100 text-teal-600' : 'bg-blue-100 text-blue-600'}`}>
+                                            {resume.template_type === 'ats_builder' ? 'ATS Friendly' : resume.template_type === 'creative_management' ? 'Creative Management' : resume.template_type === 'portfolio' ? 'Portfolio' : resume.template_type}
                                         </span>
                                     </div>
                                     <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-1" title={resume.resume_name}>
@@ -131,7 +131,7 @@ export default function MyResumesPage() {
 
                                     <div className="flex items-center gap-2 mt-6 pt-4 border-t border-gray-50">
                                         <button
-                                            onClick={() => navigate(`/cv-builder/${resume.id}`)}
+                                            onClick={() => navigate(resume.template_type === 'creative_management' ? `/builder/creative-management/${resume.id}` : resume.template_type === 'portfolio' ? `/builder/portfolio/${resume.id}` : `/cv-builder/${resume.id}`)}
                                             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors rounded-lg text-sm font-medium"
                                         >
                                             <Edit className="w-4 h-4" />

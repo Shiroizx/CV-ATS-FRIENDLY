@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Eye, Wand2 } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Download, Eye, Wand2, Save, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import Swal from "sweetalert2";
@@ -11,6 +11,7 @@ import PortfolioForm from "../components/portfolio/PortfolioForm";
 import PortfolioPreview from "../components/portfolio/PortfolioPreview";
 import { useAuth } from "../contexts/AuthContext";
 import { checkAndRecordGuestDownload, checkAndRecordUserDownload, getRemainingDownloads } from "../lib/downloadCredit";
+import { savePortfolioResume, getPortfolioResumeById } from "../lib/resumeService";
 
 // A4 at 96 dpi
 const A4_WIDTH_PX = 794;
@@ -20,13 +21,33 @@ export default function PortfolioBuilderPage() {
     const [portfolioData, setPortfolioData] =
         useState<PortfolioData>(initialPortfolioData);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
+    const [, setRemainingCredits] = useState<number | null>(null);
     const navigate = useNavigate();
+    const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
+
+    const [isSaving, setIsSaving] = useState(false);
+    const [resumeName, setResumeName] = useState("My Portfolio");
 
     // Refs for PDF capture
     const hiddenPreviewRef = useRef<HTMLDivElement>(null);  // outer A4 clip box
     const hiddenContentRef = useRef<HTMLDivElement>(null);  // inner content (gets scaled)
+
+    // Load resume from DB if ID is present
+    useEffect(() => {
+        if (id && user) {
+            getPortfolioResumeById(id).then(({ data, error }) => {
+                if (data && data.portfolio_data) {
+                    setPortfolioData(data.portfolio_data);
+                    setResumeName(data.resume_name);
+                } else if (error) {
+                    console.error("Error loading portfolio:", error);
+                    Swal.fire("Error", "Gagal memuat Portfolio. Mungkin Anda tidak memiliki akses.", "error");
+                    navigate("/");
+                }
+            });
+        }
+    }, [id, user, navigate]);
 
     useEffect(() => {
         document.title = "Portfolio Builder - FreeBuild CV";
@@ -85,7 +106,7 @@ export default function PortfolioBuilderPage() {
         // Download credit check
         const isLoggedIn = !!user;
         if (isLoggedIn) {
-            const result = await checkAndRecordUserDownload();
+            const result = await checkAndRecordUserDownload('portfolio', resumeName || portfolioData.fullName || 'Untitled');
             if (!result.allowed) {
                 Swal.fire({
                     icon: 'error',
@@ -198,13 +219,13 @@ export default function PortfolioBuilderPage() {
             captureBox.style.overflow = "hidden";
 
             // 5. The captured canvas is exactly A4 proportions → fill the PDF page
-            const pdf = new jsPDF("portrait", "mm", "a4");
-            const pdfW = pdf.internal.pageSize.getWidth();
-            const pdfH = pdf.internal.pageSize.getHeight();
+            const pdfDoc = new jsPDF("portrait", "mm", "a4");
+            const pdfW = pdfDoc.internal.pageSize.getWidth();
+            const pdfH = pdfDoc.internal.pageSize.getHeight();
             const imgData = canvas.toDataURL("image/png", 1.0);
 
-            pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
-            pdf.save(`${portfolioData.fullName || "Portfolio"}_Portfolio.pdf`);
+            pdfDoc.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+            pdfDoc.save(`${portfolioData.fullName || "Portfolio"}_Portfolio.pdf`);
         } catch (error) {
             console.error("Error generating PDF:", error);
             Swal.fire({
@@ -217,6 +238,54 @@ export default function PortfolioBuilderPage() {
             });
         } finally {
             setIsDownloading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!user) return;
+
+        let finalName = resumeName;
+        if (!id) {
+            const { value: name } = await Swal.fire({
+                title: 'Simpan Portfolio',
+                input: 'text',
+                inputLabel: 'Nama Portfolio',
+                inputValue: 'My Portfolio',
+                showCancelButton: true,
+                confirmButtonText: 'Simpan',
+                cancelButtonText: 'Batal',
+                customClass: {
+                    popup: 'rounded-2xl',
+                    confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-teal-600 text-white',
+                    cancelButton: 'px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700',
+                },
+                buttonsStyling: false,
+                inputValidator: (value) => {
+                    if (!value) return 'Nama Portfolio tidak boleh kosong!';
+                }
+            });
+            if (!name) return;
+            finalName = name;
+            setResumeName(name);
+        }
+
+        setIsSaving(true);
+        const { data, error } = await savePortfolioResume(finalName, portfolioData, id);
+        setIsSaving(false);
+
+        if (error) {
+            Swal.fire('Error', error.message || 'Gagal menyimpan Portfolio', 'error');
+        } else {
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Portfolio berhasil disimpan ke riwayat Anda.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            if (!id && data) {
+                navigate(`/builder/portfolio/${data.id}`, { replace: true });
+            }
         }
     };
 
@@ -245,13 +314,23 @@ export default function PortfolioBuilderPage() {
                                 <Wand2 className="w-4 h-4" />
                                 Isi Data Dummy
                             </button>
+                            {user && (
+                                <button
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                >
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    {isSaving ? "Menyimpan..." : "Simpan"}
+                                </button>
+                            )}
                             <button
                                 onClick={handleDownloadPDF}
                                 disabled={isDownloading}
                                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-lg hover:from-teal-600 hover:to-emerald-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Download className="w-4 h-4" />
-                                {isDownloading ? "Membuat PDF..." : remainingCredits !== null ? `Download PDF (${remainingCredits})` : "Download PDF"}
+                                {isDownloading ? "Membuat PDF..." : "Download PDF"}
                             </button>
                         </div>
                     </div>

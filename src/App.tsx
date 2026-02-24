@@ -35,9 +35,9 @@ function App() {
           <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
           <Route path="/builder" element={<CVBuilderPage />} />
           <Route path="/cv-builder/:id?" element={<CVBuilderPage />} />
-          <Route path="/builder/creative-management" element={<CreativeManagementBuilderPage />} />
-          <Route path="/builder/portfolio" element={<PortfolioBuilderPage />} />
+          <Route path="/builder/creative-management/:id?" element={<CreativeManagementBuilderPage />} />
           <Route path="/builder/portfolio/preview" element={<PortfolioMobilePreview />} />
+          <Route path="/builder/portfolio/:id?" element={<PortfolioBuilderPage />} />
           <Route path="/my-resumes" element={<ProtectedRoute><MyResumesPage /></ProtectedRoute>} />
           <Route path="/download-history" element={<ProtectedRoute><DownloadHistoryPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />

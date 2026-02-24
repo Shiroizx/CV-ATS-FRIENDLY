@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
 import type { CVData, Experience, Education, Bootcamp, Award } from "../types";
+import type { CreativeManagementData } from "../types/creativeManagement";
+import type { PortfolioData } from "../types/portfolio";
 
 export interface SavedResume {
     id: string;
@@ -371,4 +373,283 @@ export async function deleteResume(id: string): Promise<{ error: Error | null }>
         .eq("user_id", user.id);
 
     return { error };
+}
+
+// ─── Creative Management: Save Resume ────────────────────────
+
+export async function saveCreativeManagementResume(
+    resumeName: string,
+    cmData: CreativeManagementData,
+    existingId?: string
+): Promise<{ data: SavedResume | null; error: Error | null }> {
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user)
+        return { data: null, error: new Error("User must be logged in to save.") };
+
+    try {
+        let resumeId = existingId;
+
+        // ── Parent row ──────────────────────────────────────
+        if (existingId) {
+            const { error } = await supabase
+                .from("user_resumes")
+                .update({
+                    resume_name: resumeName,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", existingId)
+                .eq("user_id", user.id);
+            if (error) throw error;
+        } else {
+            const { data: inserted, error } = await supabase
+                .from("user_resumes")
+                .insert({
+                    user_id: user.id,
+                    template_type: "creative_management",
+                    resume_name: resumeName,
+                })
+                .select()
+                .single();
+            if (error) throw error;
+            resumeId = inserted.id;
+        }
+
+        if (!resumeId) throw new Error("Failed to get resume ID");
+
+        // ── Photo ───────────────────────────────────────────
+        let profilePhotoUrl = cmData.profilePhoto;
+        if (cmData.profilePhoto && cmData.profilePhoto.startsWith("data:image")) {
+            profilePhotoUrl = await uploadProfilePhoto(user.id, resumeId, cmData.profilePhoto);
+        }
+
+        // ── Store entire CM data as JSON ─────────────────────
+        const dataToStore: CreativeManagementData = {
+            ...cmData,
+            profilePhoto: profilePhotoUrl,
+        };
+
+        const { error: cmErr } = await supabase
+            .from("user_resumes")
+            .update({ cm_data: dataToStore })
+            .eq("id", resumeId)
+            .eq("user_id", user.id);
+        if (cmErr) throw cmErr;
+
+        // Return the parent resume row
+        const { data: result, error: fetchErr } = await supabase
+            .from("user_resumes")
+            .select("*")
+            .eq("id", resumeId)
+            .single();
+
+        if (fetchErr) throw fetchErr;
+        return { data: result, error: null };
+    } catch (err: any) {
+        return { data: null, error: err };
+    }
+}
+
+// ─── Creative Management: Get Resume By ID ───────────────────
+
+export async function getCreativeManagementResumeById(
+    id: string
+): Promise<{ data: (SavedResume & { cm_data: CreativeManagementData }) | null; error: Error | null }> {
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: new Error("User not logged in.") };
+
+    try {
+        const { data: resume, error } = await supabase
+            .from("user_resumes")
+            .select("*")
+            .eq("id", id)
+            .eq("user_id", user.id)
+            .single();
+
+        if (error || !resume) throw error || new Error("Resume not found");
+        if (resume.template_type !== "creative_management") {
+            throw new Error("Resume is not a Creative Management template");
+        }
+
+        return {
+            data: {
+                ...resume,
+                cm_data: resume.cm_data as CreativeManagementData,
+            },
+            error: null,
+        };
+    } catch (err: any) {
+        return { data: null, error: err };
+    }
+}
+
+// ─── Portfolio: Image Upload Helper ──────────────────────────
+
+async function uploadPortfolioImage(
+    userId: string,
+    resumeId: string,
+    imageKey: string,
+    base64Data: string
+): Promise<string> {
+    if (!base64Data || !base64Data.startsWith("data:image")) return "";
+
+    const match = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!match) return "";
+
+    const ext = match[1];
+    const raw = match[2];
+
+    const byteString = atob(raw);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) {
+        bytes[i] = byteString.charCodeAt(i);
+    }
+
+    const filePath = `${userId}/${resumeId}/${imageKey}.${ext}`;
+
+    const { error } = await supabase.storage
+        .from("portfolio-images")
+        .upload(filePath, bytes, {
+            contentType: `image/${ext}`,
+            upsert: true,
+        });
+
+    if (error) {
+        console.error("Portfolio image upload error:", error);
+        return "";
+    }
+
+    const { data: publicData } = supabase.storage
+        .from("portfolio-images")
+        .getPublicUrl(filePath);
+
+    return publicData.publicUrl;
+}
+
+// ─── Portfolio: Save Resume ──────────────────────────────────
+
+export async function savePortfolioResume(
+    resumeName: string,
+    portfolioData: PortfolioData,
+    existingId?: string
+): Promise<{ data: SavedResume | null; error: Error | null }> {
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user)
+        return { data: null, error: new Error("User must be logged in to save.") };
+
+    try {
+        let resumeId = existingId;
+
+        // ── Parent row ──────────────────────────────────────
+        if (existingId) {
+            const { error } = await supabase
+                .from("user_resumes")
+                .update({
+                    resume_name: resumeName,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", existingId)
+                .eq("user_id", user.id);
+            if (error) throw error;
+        } else {
+            const { data: inserted, error } = await supabase
+                .from("user_resumes")
+                .insert({
+                    user_id: user.id,
+                    template_type: "portfolio",
+                    resume_name: resumeName,
+                })
+                .select()
+                .single();
+            if (error) throw error;
+            resumeId = inserted.id;
+        }
+
+        if (!resumeId) throw new Error("Failed to get resume ID");
+
+        // ── Upload profile photo ────────────────────────────
+        let profilePhotoUrl = portfolioData.profilePhoto;
+        if (portfolioData.profilePhoto && portfolioData.profilePhoto.startsWith("data:image")) {
+            profilePhotoUrl = await uploadPortfolioImage(user.id, resumeId, "profile", portfolioData.profilePhoto);
+        }
+
+        // ── Upload project images ───────────────────────────
+        const processedProjects = await Promise.all(
+            portfolioData.projects.map(async (project, index) => {
+                let imageUrl = project.imageUrl || "";
+                if (imageUrl && imageUrl.startsWith("data:image")) {
+                    imageUrl = await uploadPortfolioImage(user.id, resumeId, `project_${index}`, imageUrl);
+                }
+                return { ...project, imageUrl };
+            })
+        );
+
+        // ── Store entire portfolio data as JSON ──────────────
+        const dataToStore: PortfolioData = {
+            ...portfolioData,
+            profilePhoto: profilePhotoUrl,
+            projects: processedProjects,
+        };
+
+        const { error: pdErr } = await supabase
+            .from("user_resumes")
+            .update({ portfolio_data: dataToStore })
+            .eq("id", resumeId)
+            .eq("user_id", user.id);
+        if (pdErr) throw pdErr;
+
+        // Return the parent resume row
+        const { data: result, error: fetchErr } = await supabase
+            .from("user_resumes")
+            .select("*")
+            .eq("id", resumeId)
+            .single();
+
+        if (fetchErr) throw fetchErr;
+        return { data: result, error: null };
+    } catch (err: any) {
+        return { data: null, error: err };
+    }
+}
+
+// ─── Portfolio: Get Resume By ID ─────────────────────────────
+
+export async function getPortfolioResumeById(
+    id: string
+): Promise<{ data: (SavedResume & { portfolio_data: PortfolioData }) | null; error: Error | null }> {
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: new Error("User not logged in.") };
+
+    try {
+        const { data: resume, error } = await supabase
+            .from("user_resumes")
+            .select("*")
+            .eq("id", id)
+            .eq("user_id", user.id)
+            .single();
+
+        if (error || !resume) throw error || new Error("Resume not found");
+        if (resume.template_type !== "portfolio") {
+            throw new Error("Resume is not a Portfolio template");
+        }
+
+        return {
+            data: {
+                ...resume,
+                portfolio_data: resume.portfolio_data as PortfolioData,
+            },
+            error: null,
+        };
+    } catch (err: any) {
+        return { data: null, error: err };
+    }
 }
