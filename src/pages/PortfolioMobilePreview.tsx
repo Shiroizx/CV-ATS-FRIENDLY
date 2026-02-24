@@ -10,6 +10,7 @@ export default function PortfolioMobilePreview() {
     const [data, setData] = useState<PortfolioData>(initialPortfolioData);
 
     useEffect(() => {
+        document.title = "Portfolio Preview - FreeBuild CV";
         // Retrieve data from sessionStorage
         const storedData = sessionStorage.getItem("portfolioPreviewData");
         if (storedData) {

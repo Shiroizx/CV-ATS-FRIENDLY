@@ -1,6 +1,11 @@
+import { useEffect } from 'react';
 import { Heart, Coffee, DollarSign } from 'lucide-react';
 
 export default function DonatePage() {
+    useEffect(() => {
+        document.title = "Donate - FreeBuild CV";
+    }, []);
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
             <div className="max-w-4xl mx-auto">

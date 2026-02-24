@@ -9,7 +9,7 @@ interface AwardFormProps {
 export default function AwardForm({ data, onUpdate }: AwardFormProps) {
   const addAward = () => {
     const newAward: Award = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2),
       title: "",
       institution: "",
       year: "",

@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Eye } from "lucide-react";
+import { ArrowLeft, Download, Eye, Wand2 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import Swal from "sweetalert2";
 import type { PortfolioData } from "../types/portfolio";
 import { initialPortfolioData } from "../types/portfolio";
+import { dummyPortfolioData } from "../lib/dummyData";
 import PortfolioForm from "../components/portfolio/PortfolioForm";
 import PortfolioPreview from "../components/portfolio/PortfolioPreview";
+import { useAuth } from "../contexts/AuthContext";
+import { checkAndRecordGuestDownload, checkAndRecordUserDownload, getRemainingDownloads } from "../lib/downloadCredit";
 
 // A4 at 96 dpi
 const A4_WIDTH_PX = 794;
@@ -17,13 +20,16 @@ export default function PortfolioBuilderPage() {
     const [portfolioData, setPortfolioData] =
         useState<PortfolioData>(initialPortfolioData);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     // Refs for PDF capture
     const hiddenPreviewRef = useRef<HTMLDivElement>(null);  // outer A4 clip box
     const hiddenContentRef = useRef<HTMLDivElement>(null);  // inner content (gets scaled)
 
     useEffect(() => {
+        document.title = "Portfolio Builder - FreeBuild CV";
         window.scrollTo({ top: 0, behavior: "smooth" });
 
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -63,16 +69,63 @@ export default function PortfolioBuilderPage() {
         }
     }, []);
 
+    useEffect(() => {
+        getRemainingDownloads(!!user).then(info => setRemainingCredits(info.remaining));
+    }, [user]);
+
 
 
     const handleFormChange = (newData: PortfolioData) => setPortfolioData(newData);
 
+    const handleFillDummy = () => {
+        setPortfolioData(dummyPortfolioData);
+    };
+
     const handleDownloadPDF = async () => {
+        // Download credit check
+        const isLoggedIn = !!user;
+        if (isLoggedIn) {
+            const result = await checkAndRecordUserDownload();
+            if (!result.allowed) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Batas Download Tercapai',
+                    html: `Anda sudah menggunakan <strong>${result.count}/${result.max}</strong> kredit download. Batas maksimal telah tercapai.`,
+                    confirmButtonText: 'Mengerti',
+                    customClass: { popup: 'rounded-2xl', confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-red-600 text-white' },
+                    buttonsStyling: false,
+                });
+                return;
+            }
+            setRemainingCredits(result.max - result.count);
+        } else {
+            const result = await checkAndRecordGuestDownload();
+            if (!result.allowed) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Kredit Download Habis',
+                    html: `Anda sudah menggunakan <strong>${result.count}/${result.max}</strong> download gratis. <br/><br/>Login untuk mendapatkan <strong>3 kredit ekstra</strong>!`,
+                    confirmButtonText: 'Login Sekarang',
+                    showCancelButton: true,
+                    cancelButtonText: 'Nanti Saja',
+                    customClass: {
+                        popup: 'rounded-2xl',
+                        confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-cyan-600 text-white',
+                        cancelButton: 'px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700',
+                    },
+                    buttonsStyling: false,
+                }).then((res) => {
+                    if (res.isConfirmed) navigate('/login');
+                });
+                return;
+            }
+            setRemainingCredits(result.max - result.count);
+        }
+
         const captureBox = hiddenPreviewRef.current;
         const contentEl = hiddenContentRef.current;
         if (!captureBox || !contentEl) return;
 
-        setIsDownloading(true);
         setIsDownloading(true);
         try {
             // 1. Reset everything
@@ -184,15 +237,21 @@ export default function PortfolioBuilderPage() {
                                 <span className="text-lg font-bold text-gray-900">Portfolio Builder</span>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <button
+                                onClick={handleFillDummy}
+                                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-all font-medium text-sm"
+                            >
+                                <Wand2 className="w-4 h-4" />
+                                Isi Data Dummy
+                            </button>
                             <button
                                 onClick={handleDownloadPDF}
                                 disabled={isDownloading}
                                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-lg hover:from-teal-600 hover:to-emerald-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Download className="w-4 h-4" />
-                                {isDownloading ? "Membuat PDF..." : "Download PDF"}
+                                {isDownloading ? "Membuat PDF..." : remainingCredits !== null ? `Download PDF (${remainingCredits})` : "Download PDF"}
                             </button>
                         </div>
                     </div>

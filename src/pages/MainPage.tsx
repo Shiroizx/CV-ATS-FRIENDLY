@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, Zap, Shield, Download, HeartHandshake, ArrowRight } from "lucide-react";
 import Lottie from "lottie-react";
@@ -40,6 +40,10 @@ const cvTemplates = [
 ];
 
 export default function MainPage() {
+  useEffect(() => {
+    document.title = "FreeBuild CV - ATS Friendly CV Builder";
+  }, []);
+
   const navigate = useNavigate();
   const [selectedMethod, setSelectedMethod] = useState<"dana" | "gopay" | null>(null);
 
@@ -265,23 +269,23 @@ export default function MainPage() {
             {[
               {
                 q: "Apakah FreeBuild CV benar-benar gratis?",
-                a: "Ya, 100% gratis! Semua fitur, template, dan download PDF bisa digunakan tanpa biaya sepeserpun. Tidak ada watermark, tidak ada fitur premium tersembunyi."
+                a: "Ya! Anda bisa langsung membuat dan mengunduh CV tanpa login. Guest (tanpa login) mendapatkan kuota 3 kali download gratis. Jika butuh lebih, cukup daftar dan login secara gratis untuk mendapatkan 6 kredit download tambahan!"
               },
               {
                 q: "Apakah data saya aman?",
-                a: "Sangat aman. FreeBuild CV bekerja sepenuhnya di browser Anda (client-side). Kami tidak menyimpan data pribadi atau CV Anda di server kami. Data Anda tersimpan di local storage browser Anda sendiri."
+                a: "Sangat aman. Jika Anda tidak login, data hanya tersimpan di browser Anda sendiri. Jika Anda login, data CV Anda akan disimpan dengan aman di database kami agar Anda bisa mengaksesnya kembali kapan saja dan dari perangkat mana saja."
               },
               {
                 q: "Apakah template CV ini ATS-friendly?",
-                a: "Ya, semua template kami dirancang khusus agar mudah dibaca oleh sistem ATS (Applicant Tracking System). Kami menggunakan struktur yang standar, font yang terbaca jelas, dan menghindari elemen grafis yang membingungkan ATS."
+                a: "Ya, kami memiliki template ATS Builder yang dirancang khusus agar mudah dibaca oleh sistem ATS (Applicant Tracking System). Selain itu, kami juga menyediakan template Creative dan Portfolio untuk kebutuhan spesifik lainnya."
               },
               {
                 q: "Bisakah saya mengedit CV yang sudah didownload?",
-                a: "CV yang didownload dalam format PDF tidak bisa diedit secara langsung. Namun, Anda bisa kembali ke website ini kapan saja, dan data Anda akan tetap ada (selama Anda menggunakan browser dan perangkat yang sama) untuk diedit dan didownload ulang."
+                a: "Tentu! Jika Anda login, semua CV yang Anda buat akan tersimpan di menu 'Riwayat CV'. Anda bisa membuka, mengedit kembali, dan mengunduh ulang CV tersebut kapan pun Anda mau."
               },
               {
                 q: "Apakah bisa digunakan di HP?",
-                a: "Bisa, website ini responsif dan bisa digunakan di HP. Namun, untuk pengalaman terbaik saat mengedit dan mengatur layout CV, kami menyarankan menggunakan laptop atau komputer desktop."
+                a: "Bisa, website ini responsif dan bisa digunakan di HP. Kami juga baru saja mengoptimalkan tampilan preview khusus untuk pengguna mobile agar lebih nyaman digunakan."
               }
             ].map((faq, idx) => (
               <details key={idx} className="group bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md open:bg-white open:shadow-lg">
@@ -371,12 +375,34 @@ export default function MainPage() {
           </div>
 
           <div className="space-y-3">
-            {/* Version 1.3.0 */}
+            {/* Version 1.4.0 */}
             <details className="group bg-white rounded-lg border border-gray-200 overflow-hidden" open>
               <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <span className="text-base font-semibold text-gray-900">Version 1.3.0</span>
+                  <span className="text-base font-semibold text-gray-900">Version 1.4.0</span>
                   <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">Latest</span>
+                  <span className="text-sm text-gray-500">24 Feb 2026</span>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="px-5 py-4 bg-gray-50 border-t border-gray-200">
+                <ul className="space-y-1.5 text-sm text-gray-700">
+                  <li>• Integrasi Database: Simpan CV secara online bagi pengguna yang login</li>
+                  <li>• Sistem Kredit Download: Kuota gratis untuk Guest dan User terdaftar</li>
+                  <li>• Halaman Riwayat CV & Riwayat Download untuk memantau aktivitas</li>
+                  <li>• Admin Dashboard terpusat untuk memantau pengguna dan statistik web</li>
+                  <li>• Fitur Upload Foto Profil yang tersimpan aman di Cloud Storage</li>
+                </ul>
+              </div>
+            </details>
+
+            {/* Version 1.3.0 */}
+            <details className="group bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-semibold text-gray-900">Version 1.3.0</span>
                   <span className="text-sm text-gray-500">23 Feb 2026</span>
                 </div>
                 <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -429,26 +455,6 @@ export default function MainPage() {
                   <li>• Penambahan template Creative Management CV</li>
                   <li>• Splash alert untuk panduan menyimpan CV</li>
                   <li>• Peningkatan responsivitas tampilan mobile</li>
-                </ul>
-              </div>
-            </details>
-
-            {/* Version 1.0.0 */}
-            <details className="group bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-base font-semibold text-gray-900">Version 1.0.0</span>
-                  <span className="text-sm text-gray-500">22 Des 2025</span>
-                </div>
-                <svg className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="px-5 py-4 bg-gray-50 border-t border-gray-200">
-                <ul className="space-y-1.5 text-sm text-gray-700">
-                  <li>• Peluncuran FreeBuild CV dengan template ATS Simple</li>
-                  <li>• Fitur download PDF gratis tanpa watermark</li>
-                  <li>• Real-time preview CV</li>
                 </ul>
               </div>
             </details>

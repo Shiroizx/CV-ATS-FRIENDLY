@@ -1,10 +1,27 @@
+import { useEffect } from 'react';
 import { Calendar, Zap, Bug, Sparkles } from 'lucide-react';
 
 export default function ChangelogPage() {
+    useEffect(() => {
+        document.title = "Changelog - FreeBuild CV";
+    }, []);
+
     const changelog = [
         {
+            version: '1.4.0',
+            date: '24 Februari 2026',
+            type: 'feature',
+            changes: [
+                'Integrasi Database: Simpan CV secara online bagi pengguna yang login',
+                'Sistem Kredit Download: Kuota gratis untuk Guest dan User terdaftar',
+                'Halaman Riwayat CV & Riwayat Download untuk memantau aktivitas',
+                'Admin Dashboard terpusat untuk memantau pengguna dan statistik web',
+                'Fitur Upload Foto Profil yang tersimpan aman di Cloud Storage',
+            ],
+        },
+        {
             version: '1.3.0',
-            date: '23 Februari 2025',
+            date: '23 Februari 2026',
             type: 'feature',
             changes: [
                 'Rilis fitur Portfolio Builder baru untuk memamerkan proyek terbaikmu',

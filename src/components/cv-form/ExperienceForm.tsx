@@ -11,7 +11,7 @@ interface ExperienceFormProps {
 export default function ExperienceForm({ data, onUpdate }: ExperienceFormProps) {
   const addExperience = () => {
     const newExp: Experience = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2),
       company: "",
       position: "",
       employmentType: "",

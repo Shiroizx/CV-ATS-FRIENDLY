@@ -11,7 +11,7 @@ interface EducationFormProps {
 export default function EducationForm({ data, onUpdate }: EducationFormProps) {
   const addEducation = () => {
     const newEdu: Education = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2),
       level: "",
       field: "",
       institution: "",

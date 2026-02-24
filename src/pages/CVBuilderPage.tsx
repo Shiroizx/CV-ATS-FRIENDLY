@@ -1,17 +1,42 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import type { CVData } from "../types";
 import { initialCVData } from "../types";
 import CVForm from "../components/cv-form";
 import CVPreview from "../components/cv-preview";
+import { useAuth } from "../contexts/AuthContext";
+import { checkAndRecordGuestDownload, checkAndRecordUserDownload } from "../lib/downloadCredit";
+import { saveResume, getResumeById } from "../lib/resumeService";
 
 export default function CVBuilderPage() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [cvData, setCVData] = useState<CVData>(initialCVData);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [resumeName, setResumeName] = useState("My Resume");
+
+  // Fetch specific resume if ID is present
   useEffect(() => {
+    if (id && user) {
+      getResumeById(id).then(({ data, error }) => {
+        if (data && data.template_type === 'ats_builder') {
+          setCVData(data.cv_data);
+          setResumeName(data.resume_name);
+        } else if (error) {
+          console.error("Error loading resume:", error);
+          Swal.fire("Error", "Gagal memuat CV. Mungkin Anda tidak memiliki akses.", "error");
+          navigate("/");
+        }
+      });
+    }
+  }, [id, user, navigate]);
+
+  useEffect(() => {
+    document.title = "CV ATS Builder - FreeBuild CV";
     // Selalu mulai dari posisi paling atas saat halaman builder dibuka
     window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -54,6 +79,7 @@ export default function CVBuilderPage() {
     });
   }, []);
 
+
   const handleFormChange = (data: CVData) => {
     setCVData(data);
   };
@@ -72,14 +98,110 @@ export default function CVBuilderPage() {
     navigate("/");
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    const isLoggedIn = !!user;
+
+    if (isLoggedIn) {
+      const result = await checkAndRecordUserDownload('ats_builder', resumeName || cvData.fullName || 'Untitled');
+      if (!result.allowed) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Batas Download Tercapai',
+          html: `Anda sudah menggunakan <strong>${result.count}/${result.max}</strong> kredit download. Batas maksimal telah tercapai.`,
+          confirmButtonText: 'Mengerti',
+          customClass: { popup: 'rounded-2xl', confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-red-600 text-white' },
+          buttonsStyling: false,
+        });
+        return;
+      }
+    } else {
+      const result = await checkAndRecordGuestDownload();
+      if (!result.allowed) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Kredit Download Habis',
+          html: `Anda sudah menggunakan <strong>${result.count}/${result.max}</strong> download gratis. <br/><br/>Login untuk mendapatkan <strong>3 kredit ekstra</strong>!`,
+          confirmButtonText: 'Login Sekarang',
+          showCancelButton: true,
+          cancelButtonText: 'Nanti Saja',
+          customClass: {
+            popup: 'rounded-2xl',
+            confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-cyan-600 text-white',
+            cancelButton: 'px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700',
+          },
+          buttonsStyling: false,
+        }).then((res) => {
+          if (res.isConfirmed) navigate('/login');
+        });
+        return;
+      }
+    }
+
     window.scrollTo(0, 0);
     window.print();
   };
 
+  const handleSave = async () => {
+    if (!user) return;
+
+    let finalName = resumeName;
+    if (!id) {
+      const { value: name } = await Swal.fire({
+        title: 'Simpan CV',
+        input: 'text',
+        inputLabel: 'Nama CV',
+        inputValue: 'My Resume',
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal',
+        inputValidator: (value) => {
+          if (!value) return 'Nama CV tidak boleh kosong!';
+        }
+      });
+      if (!name) return;
+      finalName = name;
+      setResumeName(name);
+    }
+
+    setIsSaving(true);
+    const { data, error } = await saveResume('ats_builder', finalName, cvData, id);
+    setIsSaving(false);
+
+    if (error) {
+      Swal.fire('Error', error.message || 'Gagal menyimpan CV', 'error');
+    } else {
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: 'CV berhasil disimpan ke riwayat Anda.',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      if (!id && data) {
+        navigate(`/cv-builder/${data.id}`, { replace: true });
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 print:bg-white relative">
-      {isPreviewMode ? <CVPreview data={cvData} onBack={handleBackToForm} onPrint={handlePrint} /> : <CVForm data={cvData} onChange={handleFormChange} onPreview={handlePreview} onBackToHome={handleBackToHome} />}
+      {isPreviewMode ? (
+        <CVPreview
+          data={cvData}
+          onBack={handleBackToForm}
+          onPrint={handlePrint}
+          onSave={handleSave}
+          isSaving={isSaving}
+          isLoggedIn={!!user}
+        />
+      ) : (
+        <CVForm
+          data={cvData}
+          onChange={handleFormChange}
+          onPreview={handlePreview}
+          onBackToHome={handleBackToHome}
+        />
+      )}
     </div>
   );
 }

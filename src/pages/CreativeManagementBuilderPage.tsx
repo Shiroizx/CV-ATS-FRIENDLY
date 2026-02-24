@@ -1,20 +1,27 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Download, Eye, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Download, Eye, X, Wand2 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import Swal from "sweetalert2";
 import type { CreativeManagementData } from "../types/creativeManagement";
 import { initialCreativeManagementData } from "../types/creativeManagement";
+import { dummyCreativeManagementData } from "../lib/dummyData";
 import CreativeManagementForm from "../components/creative-management/CreativeManagementForm";
 import CreativeManagementPreview from "../components/creative-management/CreativeManagementPreview";
 import { CreativeManagementPDF } from "../components/creative-management/CreativeManagementPDF";
+import { useAuth } from "../contexts/AuthContext";
+import { checkAndRecordGuestDownload, checkAndRecordUserDownload, getRemainingDownloads } from "../lib/downloadCredit";
 
 export default function CreativeManagementBuilderPage() {
   const [cvData, setCvData] = useState<CreativeManagementData>(initialCreativeManagementData);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
+    document.title = "Creative & Management CV - FreeBuild CV";
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     const ua = navigator.userAgent || navigator.vendor || (window as unknown as { opera?: string }).opera || "";
@@ -58,11 +65,59 @@ export default function CreativeManagementBuilderPage() {
     });
   }, []);
 
+  useEffect(() => {
+    getRemainingDownloads(!!user).then(info => setRemainingCredits(info.remaining));
+  }, [user]);
+
   const handleFormChange = (newData: CreativeManagementData) => {
     setCvData(newData);
   };
 
+  const handleFillDummy = () => {
+    setCvData(dummyCreativeManagementData);
+  };
+
   const handleDownloadPDF = async () => {
+    // Download credit check
+    const isLoggedIn = !!user;
+    if (isLoggedIn) {
+      const result = await checkAndRecordUserDownload();
+      if (!result.allowed) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Batas Download Tercapai',
+          html: `Anda sudah menggunakan <strong>${result.count}/${result.max}</strong> kredit download. Batas maksimal telah tercapai.`,
+          confirmButtonText: 'Mengerti',
+          customClass: { popup: 'rounded-2xl', confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-red-600 text-white' },
+          buttonsStyling: false,
+        });
+        return;
+      }
+      setRemainingCredits(result.max - result.count);
+    } else {
+      const result = await checkAndRecordGuestDownload();
+      if (!result.allowed) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Kredit Download Habis',
+          html: `Anda sudah menggunakan <strong>${result.count}/${result.max}</strong> download gratis. <br/><br/>Login untuk mendapatkan <strong>3 kredit ekstra</strong>!`,
+          confirmButtonText: 'Login Sekarang',
+          showCancelButton: true,
+          cancelButtonText: 'Nanti Saja',
+          customClass: {
+            popup: 'rounded-2xl',
+            confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-cyan-600 text-white',
+            cancelButton: 'px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-700',
+          },
+          buttonsStyling: false,
+        }).then((res) => {
+          if (res.isConfirmed) navigate('/login');
+        });
+        return;
+      }
+      setRemainingCredits(result.max - result.count);
+    }
+
     setIsDownloading(true);
     try {
       const blob = await pdf(<CreativeManagementPDF data={cvData} />).toBlob();
@@ -76,7 +131,14 @@ export default function CreativeManagementBuilderPage() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Gagal membuat PDF. Silakan coba lagi.");
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal!',
+        text: 'Gagal membuat PDF. Silakan coba lagi.',
+        confirmButtonText: 'OK',
+        customClass: { confirmButton: 'px-6 py-3 rounded-xl font-semibold bg-red-600 text-white' },
+        buttonsStyling: false,
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -99,14 +161,23 @@ export default function CreativeManagementBuilderPage() {
                 <span className="text-lg font-bold text-gray-900">Creative Management CV</span>
               </div>
             </div>
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isDownloading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
-              {isDownloading ? "Membuat PDF..." : "Download PDF"}
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={handleFillDummy}
+                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-all font-medium text-sm"
+              >
+                <Wand2 className="w-4 h-4" />
+                Isi Data Dummy
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                {isDownloading ? "Membuat PDF..." : remainingCredits !== null ? `Download PDF (${remainingCredits})` : "Download PDF"}
+              </button>
+            </div>
           </div>
         </div>
       </header>

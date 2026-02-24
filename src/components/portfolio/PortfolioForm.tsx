@@ -83,7 +83,7 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
             return;
         }
         const newProject: PortfolioProject = {
-            id: crypto.randomUUID(),
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2),
             title: "",
             category: "",
             description: "",
@@ -173,7 +173,7 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
             return;
         }
         const newEdu: PortfolioEducation = {
-            id: crypto.randomUUID(),
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2),
             institution: "",
             degree: "",
             year: "",

@@ -15,6 +15,9 @@ interface CVPreviewProps {
   data: CVData;
   onBack: () => void;
   onPrint: () => void;
+  onSave?: () => void;
+  isSaving?: boolean;
+  isLoggedIn?: boolean;
 }
 
 const formatDate = (dateString: string): string => {
@@ -28,7 +31,7 @@ const formatDate = (dateString: string): string => {
   }
 };
 
-export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
+export default function CVPreview({ data, onBack, onPrint, onSave, isSaving, isLoggedIn }: CVPreviewProps) {
   const isIOSSafari = useMemo(() => {
     const ua = navigator.userAgent || navigator.vendor || (window as unknown as { opera?: string }).opera || "";
     const isiOS = /iPhone|iPad|iPod/i.test(ua);
@@ -84,10 +87,23 @@ export default function CVPreview({ data, onBack, onPrint }: CVPreviewProps) {
             <ArrowLeft className="w-4 h-4" />
             Kembali ke Form
           </button>
-          <button onClick={onPrint} className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md">
-            <Printer className="w-5 h-5" />
-            Print / Save as PDF
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+            {isLoggedIn && onSave && (
+              <button
+                onClick={onSave}
+                disabled={isSaving}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium shadow-md disabled:opacity-50"
+              >
+                <Printer className="w-5 h-5 hidden" /> {/* Just to keep spacing similar if needed */}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                {isSaving ? "Menyimpan..." : "Simpan CV"}
+              </button>
+            )}
+            <button onClick={onPrint} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md">
+              <Printer className="w-5 h-5" />
+              Print / Save as PDF
+            </button>
+          </div>
         </div>
       </nav>
 
