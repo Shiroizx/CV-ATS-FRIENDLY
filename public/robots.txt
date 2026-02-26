@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /settings
+Disallow: /my-resumes
+Disallow: /download-history
+
+Sitemap: https://freebuildcv.tech/sitemap.xml

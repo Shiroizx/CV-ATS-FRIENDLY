@@ -41,7 +41,7 @@ const cvTemplates = [
 
 export default function MainPage() {
   useEffect(() => {
-    document.title = "FreeBuild CV - ATS Friendly CV Builder";
+    document.title = "FreeBuild CV - Buat CV ATS-Friendly Gratis | CV Builder Indonesia";
   }, []);
 
   const navigate = useNavigate();
@@ -90,7 +90,7 @@ export default function MainPage() {
             </div>
 
             <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-gray-900 mb-6 leading-tight">
-              Buat CV Profesional
+              Buat CV ATS-Friendly Gratis
               <br />
               <TextType
                 text={["dalam Hitungan Menit", "Cepat & Mudah", "ATS-Friendly"]}
@@ -104,8 +104,8 @@ export default function MainPage() {
             </h1>
 
             <p className="text-xl sm:text-2xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-              CV Builder gratis dengan template ATS-friendly yang membantu Anda mendapatkan pekerjaan impian.
-              <span className="font-semibold text-gray-800"> Tidak perlu registrasi!</span>
+              CV Builder gratis 100% tanpa registrasi. Template CV ATS-friendly yang lolos seleksi sistem perusahaan.
+              <span className="font-semibold text-gray-800"> Cocok untuk mahasiswa, fresh graduate, dan profesional muda.</span>
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

@@ -307,13 +307,15 @@ export default function PortfolioBuilderPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3">
-                            <button
-                                onClick={handleFillDummy}
-                                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-all font-medium text-sm"
-                            >
-                                <Wand2 className="w-4 h-4" />
-                                Isi Data Dummy
-                            </button>
+                            {user?.user_metadata?.is_admin && (
+                                <button
+                                    onClick={handleFillDummy}
+                                    className="hidden sm:flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-all font-medium text-sm"
+                                >
+                                    <Wand2 className="w-4 h-4" />
+                                    Isi Data Dummy
+                                </button>
+                            )}
                             {user && (
                                 <button
                                     onClick={handleSave}
