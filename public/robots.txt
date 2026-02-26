@@ -5,4 +5,4 @@ Disallow: /settings
 Disallow: /my-resumes
 Disallow: /download-history
 
-Sitemap: https://freebuildcv.tech/sitemap.xml
+Sitemap: https://www.freebuildcv.tech/sitemap.xml
