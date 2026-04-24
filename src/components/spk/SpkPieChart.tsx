@@ -47,15 +47,6 @@ export default function SpkPieChart({ data, title, size = 220 }: SpkPieChartProp
   const outerR = size / 2 - 10;
   const innerR = outerR * 0.55; // donut
 
-  function describeArc(cx: number, cy: number, r: number, start: number, end: number) {
-    const startX = cx + r * Math.cos(start);
-    const startY = cy + r * Math.sin(start);
-    const endX = cx + r * Math.cos(end);
-    const endY = cy + r * Math.sin(end);
-    const largeArc = end - start > Math.PI ? 1 : 0;
-    return `M ${startX} ${startY} A ${r} ${r} 0 ${largeArc} 1 ${endX} ${endY}`;
-  }
-
   if (data.length === 0) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
