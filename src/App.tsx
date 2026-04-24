@@ -10,6 +10,8 @@ import PortfolioBuilderPage from "./pages/PortfolioBuilderPage";
 import DonatePage from "./pages/DonatePage";
 import ChangelogPage from "./pages/ChangelogPage";
 import PortfolioMobilePreview from "./pages/PortfolioMobilePreview";
+import SpkDssPage from "./pages/SpkDssPage";
+
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import EmailConfirmedPage from "./pages/EmailConfirmedPage";
@@ -42,6 +44,7 @@ function App() {
           <Route path="/download-history" element={<ProtectedRoute><DownloadHistoryPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+          <Route path="/spk" element={<AdminRoute><SpkDssPage /></AdminRoute>} />
           <Route path="/donate" element={<DonatePage />} />
           <Route path="/changelog" element={<ChangelogPage />} />
           <Route path="/terms" element={<TermsPage />} />

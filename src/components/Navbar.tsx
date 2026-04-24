@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Home, FileText, Heart, ScrollText, HelpCircle, LogOut, User, LogIn, ChevronDown, Settings, ShieldAlert, Download } from 'lucide-react';
+import { Menu, X, Home, FileText, Heart, ScrollText, HelpCircle, LogOut, User, LogIn, ChevronDown, Settings, ShieldAlert, Download, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getRemainingDownloads } from '../lib/downloadCredit';
 import Swal from 'sweetalert2';
@@ -55,6 +55,10 @@ export default function Navbar() {
         { id: 'faq', label: 'FAQ', icon: HelpCircle },
         { id: 'donate', label: 'Donate', icon: Heart },
         { id: 'changelog', label: 'Changelog', icon: ScrollText },
+    ];
+
+    const routeLinks = [
+        { to: '/spk', label: 'SPK/DSS', icon: BarChart3 },
     ];
 
     const handleSignOut = async () => {
@@ -122,6 +126,19 @@ export default function Navbar() {
                                     <Icon className="w-4 h-4" />
                                     <span>{link.label}</span>
                                 </button>
+                            );
+                        })}
+                        {routeLinks.map((link) => {
+                            const Icon = link.icon;
+                            return (
+                                <Link
+                                    key={link.to}
+                                    to={link.to}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all text-gray-700 hover:bg-gray-50 hover:text-blue-600"
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    <span>{link.label}</span>
+                                </Link>
                             );
                         })}
                         <div className="h-6 w-px bg-gray-300 mx-2 hidden lg:block"></div>
@@ -285,6 +302,20 @@ export default function Navbar() {
                                         <Icon className="w-5 h-5" />
                                         <span>{link.label}</span>
                                     </button>
+                                );
+                            })}
+                            {routeLinks.map((link) => {
+                                const Icon = link.icon;
+                                return (
+                                    <Link
+                                        key={link.to}
+                                        to={link.to}
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all text-gray-700 hover:bg-gray-50 hover:text-blue-600 text-left w-full"
+                                    >
+                                        <Icon className="w-5 h-5" />
+                                        <span>{link.label}</span>
+                                    </Link>
                                 );
                             })}
 

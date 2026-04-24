@@ -14,6 +14,7 @@ import { checkAndRecordGuestDownload, checkAndRecordUserDownload, getRemainingDo
 import { saveCreativeManagementResume, getCreativeManagementResumeById } from "../lib/resumeService";
 
 export default function CreativeManagementBuilderPage() {
+  const maintenanceEnabled = true;
   const [cvData, setCvData] = useState<CreativeManagementData>(initialCreativeManagementData);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -21,6 +22,8 @@ export default function CreativeManagementBuilderPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const isAdmin = !!user?.user_metadata?.is_admin;
+  const isMaintenanceBlocked = maintenanceEnabled && !isAdmin;
 
   const [isSaving, setIsSaving] = useState(false);
   const [resumeName, setResumeName] = useState("My Creative CV");
@@ -63,27 +66,32 @@ export default function CreativeManagementBuilderPage() {
         <p class="text-sm text-gray-600">Untuk hasil terbaik, pastikan semua data sudah terisi dengan lengkap sebelum download.</p>
       `;
 
-    Swal.fire({
-      icon: 'info',
-      title: 'Cara Menyimpan CV',
-      html: htmlContent,
-      confirmButtonText: 'Mengerti',
-      showClass: {
-        popup: 'animate__animated animate__fadeInDown animate__faster',
-        backdrop: 'animate__animated animate__fadeIn'
-      },
-      hideClass: {
-        popup: 'animate__animated animate__fadeOutUp animate__faster',
-        backdrop: 'animate__animated animate__fadeOut'
-      },
-      customClass: {
-        popup: 'rounded-2xl shadow-2xl',
-        title: 'text-2xl font-bold',
-        htmlContainer: 'text-left',
-        confirmButton: 'px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-blue-600 hover:bg-blue-700 text-white',
-      },
-      buttonsStyling: false,
-    });
+    void (async () => {
+      if (isMaintenanceBlocked) return;
+
+      await Swal.fire({
+        icon: "info",
+        title: "Cara Menyimpan CV",
+        html: htmlContent,
+        confirmButtonText: "Mengerti",
+        showClass: {
+          popup: "animate__animated animate__fadeInDown animate__faster",
+          backdrop: "animate__animated animate__fadeIn",
+        },
+        hideClass: {
+          popup: "animate__animated animate__fadeOutUp animate__faster",
+          backdrop: "animate__animated animate__fadeOut",
+        },
+        customClass: {
+          popup: "rounded-2xl shadow-2xl",
+          title: "text-2xl font-bold",
+          htmlContainer: "text-left",
+          confirmButton:
+            "px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105 bg-blue-600 hover:bg-blue-700 text-white",
+        },
+        buttonsStyling: false,
+      });
+    })();
   }, []);
 
   useEffect(() => {
@@ -264,7 +272,28 @@ export default function CreativeManagementBuilderPage() {
       </header>
 
       {/* Split Screen Layout */}
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] print:hidden">
+      <div className="relative print:hidden">
+        {isMaintenanceBlocked && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-lg rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-xl">
+              <div className="text-sm font-semibold uppercase tracking-wide text-amber-700">Maintenance</div>
+              <div className="mt-2 text-xl font-bold text-amber-900">Creative Management CV sementara dinonaktifkan</div>
+              <div className="mt-2 text-sm text-amber-900/80">
+                Fitur ini sedang dalam proses maintenance. Silakan coba lagi nanti.
+              </div>
+              <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => navigate("/")}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl font-semibold bg-amber-700 hover:bg-amber-800 text-white transition-colors"
+                >
+                  Kembali ke Home
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)]">
         {/* Form Section - Left Side */}
         <div className="w-full lg:w-1/2 overflow-y-auto bg-white border-r border-gray-200">
           <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 pb-24 lg:pb-8">
@@ -282,11 +311,13 @@ export default function CreativeManagementBuilderPage() {
           </div>
         </div>
       </div>
+      </div>
 
       {/* Floating Preview Button (Mobile Only) */}
       <button
         onClick={() => setShowPreviewModal(true)}
-        className="lg:hidden fixed bottom-6 right-6 z-20 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all"
+        disabled={isMaintenanceBlocked}
+        className="lg:hidden fixed bottom-6 right-6 z-20 flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Eye className="w-5 h-5" />
         <span className="font-medium">Preview CV</span>
