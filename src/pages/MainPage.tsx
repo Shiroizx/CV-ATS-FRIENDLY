@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, HeartHandshake, ArrowRight, Sparkles, Star, ChevronRight, Users, Globe } from "lucide-react";
+import { CheckCircle, HeartHandshake, ArrowRight, Sparkles, Star, ChevronRight, Users, X } from "lucide-react";
 import Lottie from "lottie-react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -10,6 +10,9 @@ import shieldAnimation from "../assets/animations/shield.json";
 import downloadAnimation from "../assets/animations/download.json";
 import starAnimation from "../assets/animations/star.json";
 import comingSoonAnimation from "../assets/animations/coming-soon.json";
+import websiteAnimation from "../assets/animations/website.json";
+import loginAnimation from "../assets/animations/login.json";
+import { useAuth } from "../contexts/AuthContext";
 
 const cvTemplates = [
   {
@@ -170,11 +173,49 @@ export default function MainPage() {
   }, []);
 
   const navigate = useNavigate();
-  const [selectedMethod, setSelectedMethod] = useState<"dana" | "gopay" | null>(null);
+  const { user } = useAuth();
+  const [selectedMethod, setSelectedMethod] = useState<"qris" | null>(null);
+  const [showSplashNotif, setShowSplashNotif] = useState(true);
   const templatesSectionRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
+      {!user && showSplashNotif && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-[calc(100%-3rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-fadeIn p-5">
+          <button 
+            onClick={() => setShowSplashNotif(false)}
+            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <div className="flex items-start gap-4">
+            <div className="bg-blue-50 p-2 rounded-2xl shrink-0 mt-1">
+              <Lottie animationData={loginAnimation} loop={true} className="w-12 h-12" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 mb-1">Benefit Ekstra untuk Anda! ✨</h3>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                Ingin mendapatkan kredit download CV tambahan? Silakan login untuk mendapatkan benefit yang lebih baik dan menyimpan history CV tanpa takut kehilangan data yang telah Anda buat.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate('/login')}
+                  className="flex-1 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl shadow-sm hover:bg-blue-700 transition-colors text-center"
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="flex-1 py-2 bg-white text-blue-600 border border-blue-200 text-sm font-bold rounded-xl shadow-sm hover:bg-blue-50 transition-colors text-center"
+                >
+                  Daftar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══════════════════ HERO SECTION ═══════════════════ */}
       <header id="hero" className="relative overflow-hidden">
         <FloatingShapes />
@@ -328,8 +369,8 @@ export default function MainPage() {
             <div className="md:col-span-4 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
               <div className="absolute top-0 right-0 w-60 h-60 rounded-full bg-blue-500/10 blur-3xl" />
               <div className="relative">
-                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:-rotate-3 transition-all">
-                  <Globe className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:-rotate-3 transition-all overflow-hidden">
+                  <Lottie animationData={websiteAnimation} loop={true} className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">Akses Dimana Saja</h3>
                 <p className="text-gray-400 leading-relaxed max-w-md">
@@ -539,46 +580,30 @@ export default function MainPage() {
             <div className="flex flex-wrap justify-center gap-3 mb-8">
               <button
                 type="button"
-                onClick={() => setSelectedMethod(selectedMethod === "dana" ? null : "dana")}
+                onClick={() => setSelectedMethod(selectedMethod === "qris" ? null : "qris")}
                 className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all ${
-                  selectedMethod === "dana"
+                  selectedMethod === "qris"
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-200/50 scale-105"
                     : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
                 }`}
               >
-                QRIS Dana
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedMethod(selectedMethod === "gopay" ? null : "gopay")}
-                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all ${
-                  selectedMethod === "gopay"
-                    ? "bg-green-600 text-white shadow-lg shadow-green-200/50 scale-105"
-                    : "bg-white border border-gray-200 text-gray-700 hover:border-green-300"
-                }`}
-              >
-                QRIS GoPay
+                QRIS (All Payment)
               </button>
             </div>
 
             {selectedMethod && (
               <div className="flex flex-col items-center gap-3 animate-fadeIn">
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm inline-block">
-                  {selectedMethod === "dana" && (
-                    <img src="/assets/qrisdana.png" alt="QRIS Dana - Donate" className="w-56 h-56 object-contain" />
-                  )}
-                  {selectedMethod === "gopay" && (
-                    <img src="/assets/qrisgopay.png" alt="QRIS GoPay - Donate" className="w-56 h-56 object-contain" />
-                  )}
+                  <img src="/assets/qrissallpayment.jpeg" alt="QRIS All Payment - Donate" className="w-72 h-72 sm:w-80 sm:h-80 object-contain" />
                 </div>
                 <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-4 py-1.5 rounded-full">
-                  {selectedMethod === "dana" ? "QRIS via Dana" : "QRIS via GoPay"}
+                  Scan QRIS untuk Donasi
                 </span>
               </div>
             )}
 
             {!selectedMethod && (
-              <p className="text-xs text-gray-400">Pilih metode di atas untuk menampilkan kode QR</p>
+              <p className="text-xs text-gray-400">Pilih tombol di atas untuk menampilkan kode QR</p>
             )}
 
             <p className="mt-8 text-xs text-gray-400">

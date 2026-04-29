@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Users, Plus, Pencil, Trash2, Search, ArrowLeft, Loader2, ShieldAlert, Globe, RefreshCw, Settings } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Search, ArrowLeft, Loader2, ShieldAlert, Globe, RefreshCw, Settings, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { getDownloadLimits } from "../lib/downloadCredit";
@@ -337,6 +337,13 @@ export default function AdminDashboardPage() {
                             <Settings className="w-4 h-4" />
                             App Settings
                         </button>
+                        <Link
+                            to="/spk"
+                            className="pb-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center gap-2"
+                        >
+                            <BarChart3 className="w-4 h-4" />
+                            SPK/DSS Analytics
+                        </Link>
                     </div>
                 </div>
             </header>
