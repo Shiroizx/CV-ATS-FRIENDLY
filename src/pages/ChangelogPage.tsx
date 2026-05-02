@@ -8,6 +8,20 @@ export default function ChangelogPage() {
 
     const changelog = [
         {
+            version: '1.5.0',
+            date: '2 Mei 2026',
+            type: 'feature',
+            changes: [
+                'Sistem Pendukung Keputusan (SPK DSS) dengan metode SAW, TOPSIS, dan AHP',
+                'Visualisasi data interaktif: Bar Chart, Pie Chart, Radar Chart, dan Ranking Table',
+                'Flowchart Mermaid untuk visualisasi proses pengambilan keputusan',
+                'Analytics Dashboard untuk tracking penggunaan SPK DSS',
+                'Export hasil analisis SPK ke PDF dengan format profesional',
+                'Dokumentasi lengkap SPK DSS dengan panduan penggunaan',
+                'Integrasi database untuk menyimpan history analisis SPK',
+            ],
+        },
+        {
             version: '1.4.0',
             date: '24 Februari 2026',
             type: 'feature',
