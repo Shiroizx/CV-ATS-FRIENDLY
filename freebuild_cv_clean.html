@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreeBuild CV - Diagram Sistem</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #ffffff;
+            padding: 40px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .diagram-section {
+            margin: 60px 0;
+            page-break-inside: avoid;
+        }
+        
+        h2 {
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .mermaid {
+            text-align: center;
+            margin: 30px 0;
+            background: #ffffff !important;
+        }
+        
+        .mermaid svg {
+            background: #ffffff !important;
+            max-width: 100%;
+        }
+        
+        .mermaid .node rect,
+        .mermaid .node circle,
+        .mermaid .node ellipse,
+        .mermaid .node polygon {
+            fill: #ffffff !important;
+            stroke: #000000 !important;
+        }
+        
+        .mermaid .cluster rect {
+            fill: #ffffff !important;
+            stroke: #000000 !important;
+        }
+        
+        .caption {
+            font-size: 11px;
+            color: #333;
+            text-align: center;
+            margin-top: 15px;
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        @media print {
+            .diagram-section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="diagram-section">
+        <h2>Gambar 1. Use Case Diagram</h2>
+        <div class="mermaid">
+flowchart TB
+    Guest([Guest])
+    User([User])
+    Admin([Admin])
+    
+    Guest --> A[Buat CV]
+    Guest --> B[Download PDF]
+    Guest --> C[Daftar Akun]
+    
+    User --> A
+    User --> B
+    User --> D[Simpan CV]
+    User --> E[Edit CV]
+    User --> F[Lihat Riwayat]
+    
+    Admin --> G[Kelola User]
+    Admin --> H[Atur Limit]
+    Admin --> I[Lihat Statistik]
+        </div>
+        <p class="caption">Use case diagram sistem FreeBuild CV yang menunjukkan interaksi antara Guest, User, dan Admin dengan fitur-fitur yang tersedia</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 2. Activity Diagram - Pembuatan CV</h2>
+        <div class="mermaid">
+flowchart TD
+    A([Mulai]) --> B[Buka halaman]
+    B --> C[Pilih template]
+    C --> D[Isi data CV]
+    D --> E{Sudah login?}
+    E -->|Ya| F[Simpan ke database]
+    E -->|Tidak| G[Klik download]
+    F --> G
+    G --> H{Cek kredit}
+    H -->|Cukup| I[Generate PDF]
+    H -->|Habis| J[Tampil error]
+    I --> K([Selesai])
+    J --> K
+        </div>
+        <p class="caption">Alur aktivitas pembuatan CV dari pemilihan template hingga download PDF dengan pengecekan kredit download</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 3. Activity Diagram - Admin</h2>
+        <div class="mermaid">
+flowchart TD
+    A([Mulai]) --> B[Login]
+    B --> C{Cek role}
+    C -->|Admin| D[Masuk dashboard]
+    C -->|Bukan admin| E[Redirect home]
+    D --> F{Pilih menu}
+    F -->|Kelola user| G[Lihat daftar user]
+    F -->|Settings| H[Ubah konfigurasi]
+    F -->|Statistik| I[Lihat statistik]
+    G --> J([Selesai])
+    H --> J
+    I --> J
+    E --> J
+        </div>
+        <p class="caption">Alur aktivitas admin dalam mengelola sistem, user, dan konfigurasi aplikasi</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 4. Sequence Diagram - Download CV</h2>
+        <div class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant D as Database
+    
+    U->>F: Klik download
+    F->>B: Request download
+    B->>D: Cek kredit user
+    alt Kredit cukup
+        D-->>B: OK
+        B->>B: Generate PDF
+        B->>D: Kurangi kredit
+        B-->>F: Return PDF
+        F-->>U: Download file
+    else Kredit habis
+        D-->>B: Limit reached
+        B-->>F: Error
+        F-->>U: Tampil alert
+    end
+        </div>
+        <p class="caption">Interaksi antar komponen saat user melakukan download CV dengan pengecekan kredit</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 5. Sequence Diagram - Login</h2>
+        <div class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant F as Form
+    participant A as Auth
+    participant D as Database
+    
+    U->>F: Input email & password
+    F->>A: Submit login
+    A->>D: Cek kredensial
+    alt Login berhasil
+        D-->>A: User data
+        A-->>F: Set session
+        F-->>U: Redirect dashboard
+    else Login gagal
+        D-->>A: Invalid
+        A-->>F: Error message
+        F-->>U: Tampil error
+    end
+        </div>
+        <p class="caption">Proses autentikasi user dengan validasi kredensial dan penanganan error</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 6. Class Diagram</h2>
+        <div class="mermaid">
+classDiagram
+    class User {
+        +id: string
+        +email: string
+        +username: string
+        +downloadCount: number
+        +login()
+        +logout()
+    }
+    
+    class Resume {
+        +id: string
+        +userId: string
+        +templateType: string
+        +resumeName: string
+        +createdAt: date
+        +save()
+        +delete()
+    }
+    
+    class PersonalInfo {
+        +fullName: string
+        +email: string
+        +phone: string
+        +address: string
+    }
+    
+    class Experience {
+        +company: string
+        +position: string
+        +startDate: string
+        +endDate: string
+    }
+    
+    class Education {
+        +institution: string
+        +degree: string
+        +startDate: string
+        +endDate: string
+    }
+    
+    class Skills {
+        +softSkills: string
+        +hardSkills: string
+    }
+    
+    User "1" -- "*" Resume
+    Resume "1" -- "1" PersonalInfo
+    Resume "1" -- "*" Experience
+    Resume "1" -- "*" Education
+    Resume "1" -- "1" Skills
+        </div>
+        <p class="caption">Struktur class dan relasi antar entitas dalam sistem FreeBuild CV</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 7. Component Diagram</h2>
+        <div class="mermaid">
+graph TB
+    subgraph Frontend
+        A[React App]
+        B[CV Builder]
+        C[Portfolio Builder]
+        D[Admin Panel]
+    end
+    
+    subgraph Services
+        E[Auth Service]
+        F[Resume Service]
+        G[Download Service]
+    end
+    
+    subgraph Backend
+        H[(Supabase)]
+    end
+    
+    A --> B
+    A --> C
+    A --> D
+    B --> F
+    C --> F
+    D --> E
+    E --> H
+    F --> H
+    G --> H
+        </div>
+        <p class="caption">Arsitektur komponen aplikasi dari layer frontend hingga backend</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 8. Deployment Diagram</h2>
+        <div class="mermaid">
+graph LR
+    subgraph Client
+        A[Browser]
+    end
+    
+    subgraph Vercel
+        B[CDN]
+        C[Static Files]
+    end
+    
+    subgraph Supabase
+        D[Auth]
+        E[(Database)]
+        F[Storage]
+    end
+    
+    A --> B
+    B --> C
+    C --> D
+    C --> E
+    C --> F
+        </div>
+        <p class="caption">Arsitektur deployment aplikasi menggunakan Vercel untuk hosting dan Supabase sebagai backend</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2>Gambar 9. Entity Relationship Diagram</h2>
+        <div class="mermaid">
+erDiagram
+    USERS ||--o{ USER_RESUMES : creates
+    USERS ||--o{ DOWNLOAD_HISTORY : has
+    USER_RESUMES ||--|| PERSONAL_INFO : contains
+    USER_RESUMES ||--o{ EXPERIENCES : has
+    USER_RESUMES ||--o{ EDUCATION : has
+    USER_RESUMES ||--|| SKILLS : has
+    
+    USERS {
+        uuid id PK
+        string email
+        string username
+        int download_count
+        timestamp created_at
+    }
+    
+    USER_RESUMES {
+        uuid id PK
+        uuid user_id FK
+        string template_type
+        string resume_name
+        timestamp created_at
+    }
+    
+    PERSONAL_INFO {
+        uuid id PK
+        uuid resume_id FK
+        string full_name
+        string phone
+        string email
+    }
+    
+    EXPERIENCES {
+        uuid id PK
+        uuid resume_id FK
+        string company
+        string position
+        string start_date
+        string end_date
+    }
+    
+    EDUCATION {
+        uuid id PK
+        uuid resume_id FK
+        string institution
+        string degree
+        string start_date
+        string end_date
+    }
+    
+    SKILLS {
+        uuid id PK
+        uuid resume_id FK
+        string soft_skills
+        string hard_skills
+    }
+    
+    DOWNLOAD_HISTORY {
+        uuid id PK
+        uuid user_id FK
+        string template_type
+        timestamp downloaded_at
+    }
+        </div>
+        <p class="caption">Relasi antar tabel dalam database dengan primary key dan foreign key</p>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'base',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            themeVariables: {
+                background: '#ffffff',
+                mainBkg: '#ffffff',
+                primaryColor: '#ffffff',
+                primaryTextColor: '#000000',
+                primaryBorderColor: '#000000',
+                lineColor: '#000000',
+                secondaryColor: '#ffffff',
+                tertiaryColor: '#ffffff',
+                clusterBkg: '#ffffff',
+                clusterBorder: '#000000',
+                edgeLabelBackground: '#ffffff',
+                fontSize: '14px',
+                fontFamily: 'Arial, sans-serif'
+            }
+        });
+    </script>
+</body>
+</html>
