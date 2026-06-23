@@ -178,7 +178,11 @@ export default function MainPage() {
 
       {/* ═══════════════════ HERO SECTION ═══════════════════ */}
       <header id="hero" className="relative overflow-hidden bg-white border-b border-zinc-100">
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-32 sm:pb-36">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15 pointer-events-none"
+          style={{ backgroundImage: 'url(/assets/herobackground.png)' }}
+        />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-32 sm:pb-36">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left: Copy */}
             <div className="order-2 lg:order-1">
@@ -549,9 +553,18 @@ export default function MainPage() {
           <div className="space-y-3">
             {[
               {
+                version: "1.6.0",
+                date: "23 Juni 2026",
+                latest: true,
+                items: [
+                  "Redesign total antarmuka (Auth & Landing Page) dengan gaya Premium Sleek Monochrome",
+                  "Penambahan background gambar kustom pada Hero section",
+                ],
+              },
+              {
                 version: "1.5.0",
                 date: "2 Mei 2026",
-                latest: true,
+                latest: false,
                 items: [
                   "Sistem Pendukung Keputusan (SPK DSS) dengan metode SAW, TOPSIS, dan AHP",
                   "Visualisasi data interaktif: Bar Chart, Pie Chart, Radar Chart, dan Ranking Table",
