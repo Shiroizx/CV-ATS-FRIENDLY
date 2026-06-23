@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Diagram Login - CV ATS Builder</title>
+    <!-- Memuat pustaka Mermaid.js dari CDN -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card {
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 800px;
+            width: 100%;
+        }
+        h2 {
+            text-align: center;
+            color: #1f2937;
+            margin-bottom: 30px;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Activity Diagram: Proses Login</h2>
+        
+        <!-- Kode diagram mermaid diletakkan di dalam class="mermaid" -->
+        <div class="mermaid">
+flowchart TD
+    subgraph User[User]
+        direction TB
+        Start(( )) --> BtnLogin[Tombol Login]
+        InputData[Input username & password]
+    end
+
+    subgraph Sistem[Sistem]
+        direction TB
+        ShowForm[Menampilkan Form Login]
+        Validasi{Validasi}
+        ShowHome[Menampilkan Halaman Beranda User]
+        End((( )))
+    end
+
+    BtnLogin --> ShowForm
+    ShowForm --> InputData
+    InputData --> Validasi
+    
+    Validasi -- Tidak --> ShowForm
+    Validasi -- Ya --> ShowHome
+    ShowHome --> End
+
+    %% Styling 
+    style Start fill:#000,stroke:#000,stroke-width:2px,color:#fff;
+    style End fill:#000,stroke:#f00,stroke-width:2px,color:#fff;
+        </div>
+    </div>
+
+</body>
+</html>

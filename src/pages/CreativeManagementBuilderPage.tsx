@@ -14,7 +14,7 @@ import { checkAndRecordGuestDownload, checkAndRecordUserDownload, getRemainingDo
 import { saveCreativeManagementResume, getCreativeManagementResumeById } from "../lib/resumeService";
 
 export default function CreativeManagementBuilderPage() {
-  const maintenanceEnabled = true;
+  const maintenanceEnabled = false;
   const [cvData, setCvData] = useState<CreativeManagementData>(initialCreativeManagementData);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);

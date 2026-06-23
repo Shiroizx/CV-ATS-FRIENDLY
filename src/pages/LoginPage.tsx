@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogIn, ArrowLeft, Eye, EyeOff, User, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, ShieldAlert, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { checkRateLimit, resetRateLimit, sanitizeInput } from "../lib/rateLimiter";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function LoginPage() {
     const [loginIdentifier, setLoginIdentifier] = useState("");
@@ -93,7 +94,7 @@ export default function LoginPage() {
                         confirmButtonText: 'Coba Lagi',
                         customClass: {
                             popup: 'rounded-2xl',
-                            confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-cyan-600 text-white',
+                            confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-zinc-900 text-white',
                         },
                         buttonsStyling: false
                     });
@@ -135,7 +136,7 @@ export default function LoginPage() {
                 confirmButtonText: 'Coba Lagi',
                 customClass: {
                     popup: 'rounded-2xl',
-                    confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-cyan-600 text-white',
+                    confirmButton: 'px-6 py-2 rounded-xl font-semibold bg-zinc-900 text-white',
                 },
                 buttonsStyling: false
             });
@@ -154,136 +155,158 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="w-full flex h-screen overflow-hidden bg-gray-50 font-sans items-center justify-center p-4 relative" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            <div className="w-full max-w-md animate-[fadeIn_0.5s_ease-out]">
+        <div className="min-h-[100dvh] w-full flex font-sans bg-white" style={{ fontFamily: "'Inter', 'Geist', 'Outfit', sans-serif" }}>
+            
+            {/* LEFT SIDE - VISUAL/BRANDING */}
+            <div 
+                className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-12 text-white"
+                style={{
+                    backgroundImage: "url('/assets/background.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                }}
+            >
+                {/* Overlay for text legibility */}
+                <div className="absolute inset-0 bg-black/50 pointer-events-none" />
 
-                {/* Logo Section */}
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">FreeBuild CV</h1>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Selamat Datang</h2>
-                    <p className="text-gray-500 text-sm font-light">Masukkan kredensial Anda untuk melanjutkan</p>
+                <div className="relative z-10 flex items-center gap-2">
+                    <div className="bg-white p-1.5 rounded-sm flex items-center justify-center">
+                        <img src="/favicon.png" alt="FreeBuild CV Logo" className="w-5 h-5 object-contain" />
+                    </div>
+                    <span className="font-bold text-xl tracking-tight">FreeBuild CV</span>
                 </div>
 
-                {/* Login Card */}
-                <div className="rounded-3xl p-8 shadow-2xl bg-white border border-gray-100">
-                    <form onSubmit={handleLogin} autoComplete="off">
-                        {/* Honeypot — invisible to humans, bots fill it */}
-                        <div className="absolute opacity-0 pointer-events-none h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
-                            <label htmlFor="website">Website</label>
-                            <input type="text" id="website" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} tabIndex={-1} autoComplete="off" />
-                        </div>
+                <div className="relative z-10 max-w-lg mb-12">
+                    <h2 className="text-4xl lg:text-5xl font-medium tracking-tight mb-6 leading-[1.1]">
+                        Bangun karier profesional Anda dimulai dari CV yang tepat.
+                    </h2>
+                    <p className="text-zinc-400 text-lg leading-relaxed max-w-[45ch]">
+                        Sistem kami memastikan resume Anda dioptimalkan untuk ATS, memberikan Anda peluang terbaik untuk melewati tahap seleksi pertama.
+                    </p>
+                </div>
 
-                        {/* Lockout Banner */}
-                        {lockoutSeconds > 0 && (
-                            <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium">
-                                <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-                                <span>Terlalu banyak percobaan. Coba lagi dalam <strong>{formatCountdown(lockoutSeconds)}</strong></span>
+                <div className="relative z-10 flex items-center gap-4 text-sm text-zinc-500">
+                    <div className="w-10 h-px bg-zinc-800" />
+                    <p>© {new Date().getFullYear()} FreeBuild CV</p>
+                </div>
+            </div>
+
+            {/* RIGHT SIDE - FORM */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 md:p-24 relative bg-white">
+                <Link to="/" className="absolute top-8 right-8 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors flex items-center gap-2 group">
+                    <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                    Kembali
+                </Link>
+
+                <div className="w-full max-w-[400px]">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 mb-2">Selamat Datang</h1>
+                        <p className="text-zinc-500 mb-8">Masuk ke akun Anda untuk melanjutkan.</p>
+
+                        <form onSubmit={handleLogin} autoComplete="off" className="space-y-5">
+                            {/* Honeypot */}
+                            <div className="absolute opacity-0 pointer-events-none h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+                                <label htmlFor="website">Website</label>
+                                <input type="text" id="website" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} tabIndex={-1} autoComplete="off" />
                             </div>
-                        )}
-                        {/* Email Input */}
-                        <div className="mb-6">
-                            <label htmlFor="loginIdentifier" className="block text-sm font-semibold text-gray-800 mb-2.5">
-                                Email atau Username
-                            </label>
-                            <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
+
+                            <AnimatePresence>
+                                {lockoutSeconds > 0 && (
+                                    <motion.div
+                                        className="flex items-start gap-3 p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm"
+                                        initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                        animate={{ opacity: 1, height: "auto", marginBottom: 20 }}
+                                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                    >
+                                        <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+                                        <p>Akun terkunci sementara. Coba lagi dalam <span className="font-bold">{formatCountdown(lockoutSeconds)}</span></p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            <div className="space-y-1.5">
+                                <label htmlFor="loginIdentifier" className="block text-sm font-medium text-zinc-700">
+                                    Email atau Username
+                                </label>
                                 <input
                                     type="text"
                                     id="loginIdentifier"
                                     required
                                     value={loginIdentifier}
                                     onChange={(e) => setLoginIdentifier(e.target.value)}
-                                    placeholder="nama@example.com atau username"
-                                    className="w-full px-4 py-3.5 pl-12 rounded-xl bg-white border-2 border-gray-100 focus:border-cyan-500 focus:ring-0 text-gray-800 placeholder-gray-400 outline-none transition-all hover:border-gray-200 shadow-sm focus:shadow-[0_0_0_3px_rgba(6,182,212,0.2)]"
+                                    placeholder="nama@example.com"
+                                    className="w-full px-4 py-3 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 transition-all sm:text-sm"
                                 />
                             </div>
-                        </div>
 
-                        {/* Password Input */}
-                        <div className="mb-6">
-                            <label htmlFor="password" className="block text-sm font-semibold text-gray-800 mb-2.5">
-                                Password
-                            </label>
-                            <div className="relative group">
-                                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-cyan-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                                </svg>
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    id="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full px-4 py-3.5 pl-12 pr-12 rounded-xl bg-white border-2 border-gray-100 focus:border-cyan-500 focus:ring-0 text-gray-800 placeholder-gray-400 outline-none transition-all hover:border-gray-200 shadow-sm focus:shadow-[0_0_0_3px_rgba(6,182,212,0.2)]"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-500 transition-colors"
-                                >
-                                    {showPassword ? (
-                                        <EyeOff className="w-5 h-5" />
-                                    ) : (
-                                        <Eye className="w-5 h-5" />
-                                    )}
+                            <div className="space-y-1.5">
+                                <label htmlFor="password" className="block text-sm font-medium text-zinc-700">
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        id="password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        className="w-full px-4 py-3 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 transition-all sm:text-sm pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors p-1"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 pb-2">
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 focus:ring-offset-0 cursor-pointer transition-colors"
+                                    />
+                                    <span className="text-sm text-zinc-600 group-hover:text-zinc-900 transition-colors">Ingat saya</span>
+                                </label>
+                                <button type="button" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors">
+                                    Lupa password?
                                 </button>
                             </div>
-                        </div>
 
-                        {/* Remember & Forgot */}
-                        <div className="flex items-center justify-between mb-8">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-500" />
-                                <span className="text-sm text-gray-600 font-medium">Ingat saya</span>
-                            </label>
-                            <a href="#" className="text-sm font-medium text-cyan-600 hover:text-cyan-700 transition-colors">Lupa password?</a>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="space-y-4">
-                            <button
+                            <motion.button
                                 type="submit"
                                 disabled={loading || lockoutSeconds > 0}
-                                className="w-full py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:-translate-y-[2px] hover:shadow-[0_8px_24px_rgba(6,182,212,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                                style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' }}
+                                className="w-full py-3 px-4 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-colors bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-zinc-900"
+                                whileTap={!loading && !lockoutSeconds ? { scale: 0.98 } : {}}
                             >
                                 {loading ? (
-                                    "Memproses..."
-                                ) : (
                                     <>
-                                        <LogIn className="w-5 h-5" />
-                                        <span>Masuk</span>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Memproses...</span>
                                     </>
+                                ) : (
+                                    <span>Masuk</span>
                                 )}
-                            </button>
+                            </motion.button>
+                        </form>
 
-                            <Link
-                                to="/"
-                                className="w-full py-3.5 rounded-xl text-gray-700 bg-gray-50 border border-gray-200 font-semibold flex items-center justify-center gap-2 transition-all hover:bg-gray-100 hover:-translate-y-[2px] shadow-sm hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                                <span>Halaman Dashboard</span>
+                        <p className="mt-8 text-center text-sm text-zinc-500">
+                            Belum punya akun?{' '}
+                            <Link to="/register" className="font-medium text-zinc-900 hover:underline underline-offset-4 transition-all">
+                                Daftar sekarang
                             </Link>
-                        </div>
-                    </form>
-
-                    {/* Divider */}
-                    <div className="flex items-center gap-4 my-6">
-                        <div className="flex-1 h-px bg-gray-200"></div>
-                        <span className="text-xs text-gray-400 font-medium tracking-wide">atau</span>
-                        <div className="flex-1 h-px bg-gray-200"></div>
-                    </div>
-
-                    {/* Sign Up Link */}
-                    <p className="text-center text-gray-600 text-sm">
-                        Belum punya akun?{' '}
-                        <Link to="/register" className="font-semibold text-cyan-600 hover:text-cyan-700 transition-colors">
-                            Daftar di sini
-                        </Link>
-                    </p>
+                        </p>
+                    </motion.div>
                 </div>
-
             </div>
         </div>
     );
