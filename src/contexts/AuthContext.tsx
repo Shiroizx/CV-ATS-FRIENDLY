@@ -41,9 +41,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Listen for auth state changes
         const { data: authListener } = supabase.auth.onAuthStateChange(
-            (_event, session) => {
-                setSession(session);
-                setUser(session?.user || null);
+            (event, newSession) => {
+                if (event === "SIGNED_OUT") {
+                    setSession(null);
+                    setUser(null);
+                } else {
+                    setSession((prevSession) => {
+                        if (
+                            prevSession?.access_token === newSession?.access_token &&
+                            prevSession?.user?.id === newSession?.user?.id
+                        ) {
+                            return prevSession;
+                        }
+                        return newSession;
+                    });
+                    setUser((prevUser) => {
+                        if (
+                            prevUser?.id === newSession?.user?.id &&
+                            prevUser?.email === newSession?.user?.email &&
+                            prevUser?.updated_at === newSession?.user?.updated_at
+                        ) {
+                            return prevUser;
+                        }
+                        return newSession?.user || null;
+                    });
+                }
                 setLoading(false);
             }
         );

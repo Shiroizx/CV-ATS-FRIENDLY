@@ -62,7 +62,7 @@ export default function PreviewHeader({
                         <img
                             src={profilePhoto}
                             alt={fullName || 'Profile'}
-                            className="w-16 h-20 object-cover border border-gray-300"
+                            className="w-16 h-20 object-cover"
                         />
                     </div>
                 )}

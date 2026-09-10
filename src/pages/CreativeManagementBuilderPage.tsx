@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Eye, X, Wand2, Save, Loader2 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
@@ -27,10 +27,12 @@ export default function CreativeManagementBuilderPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [resumeName, setResumeName] = useState("My Creative CV");
+  const loadedResumeIdRef = useRef<string | null>(null);
 
-  // Load resume from DB if ID is present
+  // Load resume from DB if ID is present (only once per resume ID)
   useEffect(() => {
-    if (id && user) {
+    if (id && user && loadedResumeIdRef.current !== id) {
+      loadedResumeIdRef.current = id;
       getCreativeManagementResumeById(id).then(({ data, error }) => {
         if (data && data.cm_data) {
           setCvData(data.cm_data);
@@ -216,6 +218,7 @@ export default function CreativeManagementBuilderPage() {
         showConfirmButton: false
       });
       if (!id && data) {
+        loadedResumeIdRef.current = data.id;
         navigate(`/builder/creative-management/${data.id}`, { replace: true });
       }
     }

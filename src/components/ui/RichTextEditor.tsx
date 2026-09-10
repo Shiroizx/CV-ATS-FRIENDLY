@@ -16,7 +16,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     content: value,
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[80px] px-3 py-2",
+        class: "focus:outline-none min-h-[80px] px-3 py-2 text-sm text-gray-800",
       },
     },
     onUpdate: ({ editor }) => {
@@ -26,8 +26,11 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
   });
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value);
+    if (!editor) return;
+    const currentHtml = editor.getHTML();
+    const isBothEmpty = editor.isEmpty && (!value || value === "<p></p>");
+    if (!isBothEmpty && value !== currentHtml) {
+      editor.commands.setContent(value || "");
     }
   }, [value, editor]);
 

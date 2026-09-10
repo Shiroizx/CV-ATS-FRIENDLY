@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import type { CVData } from "../types";
@@ -18,10 +18,12 @@ export default function CVBuilderPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [resumeName, setResumeName] = useState("My Resume");
+  const loadedResumeIdRef = useRef<string | null>(null);
 
-  // Fetch specific resume if ID is present
+  // Fetch specific resume if ID is present (only load once per resume ID)
   useEffect(() => {
-    if (id && user) {
+    if (id && user && loadedResumeIdRef.current !== id) {
+      loadedResumeIdRef.current = id;
       getResumeById(id).then(({ data, error }) => {
         if (data && data.template_type === 'ats_builder') {
           setCVData(data.cv_data);
@@ -178,6 +180,7 @@ export default function CVBuilderPage() {
         showConfirmButton: false
       });
       if (!id && data) {
+        loadedResumeIdRef.current = data.id;
         navigate(`/cv-builder/${data.id}`, { replace: true });
       }
     }

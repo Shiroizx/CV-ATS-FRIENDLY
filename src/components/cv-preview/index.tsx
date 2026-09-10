@@ -46,14 +46,21 @@ export default function CVPreview({ data, onBack, onPrint, onSave, isSaving, isL
     const htmlContent = isIOSSafari
       ? `
         <p class="text-gray-700 mb-3">Gunakan tombol <strong>Print / Save as PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.</p>
-        <p class="text-sm text-gray-600 mb-3">Untuk hasil terbaik, pastikan ukuran kertas A4 dan orientasi Portrait saat menyimpan atau mencetak.</p>
+        <p class="text-sm text-gray-600 mb-2">Untuk hasil terbaik, pastikan ukuran kertas <strong>A4</strong>, orientasi <strong>Portrait</strong>, dan Margin <strong>Default</strong>.</p>
         <div class="mt-3 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-900">
           📱 <strong>Pengguna iPhone/iPad:</strong> Jika ingin menyimpan CV sebagai PDF dengan hasil yang lebih maksimal, disarankan menggunakan aplikasi <strong>Chrome</strong> di iOS, atau simpan/print dari laptop/PC.
         </div>
       `
       : `
         <p class="text-gray-700 mb-2">Gunakan tombol <strong>Print / Save as PDF</strong> di atas untuk menyimpan CV kamu dalam bentuk PDF.</p>
-        <p class="text-sm text-gray-600">Untuk hasil terbaik, pastikan ukuran kertas A4 dan orientasi Portrait saat menyimpan atau mencetak.</p>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900 space-y-1 my-3">
+          <p>📄 <strong>Pengaturan Cetak Terbaik:</strong></p>
+          <ul class="list-disc list-inside space-y-0.5 text-xs text-blue-800">
+            <li>Kertas: <strong>A4</strong> (Portrait)</li>
+            <li>Margin: <strong>Default</strong> (jarak atas & samping rapi di semua lembar)</li>
+            <li>Headers and footers: <strong>Jangan dicentang</strong></li>
+          </ul>
+        </div>
       `;
 
     Swal.fire({
@@ -108,7 +115,7 @@ export default function CVPreview({ data, onBack, onPrint, onSave, isSaving, isL
       </nav>
 
       <main className="max-w-4xl mx-auto bg-white shadow-lg print:shadow-none print:max-w-none my-4 print:my-0">
-        <article className="p-8 md:p-10 print:p-[0.75in] font-serif">
+        <article className="p-8 md:p-10 print:p-0 font-serif">
           <PreviewHeader
             profilePhoto={data.profilePhoto}
             fullName={data.fullName}

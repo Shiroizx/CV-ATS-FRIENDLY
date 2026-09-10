@@ -28,14 +28,16 @@ export default function PortfolioBuilderPage() {
 
     const [isSaving, setIsSaving] = useState(false);
     const [resumeName, setResumeName] = useState("My Portfolio");
+    const loadedResumeIdRef = useRef<string | null>(null);
 
     // Refs for PDF capture
     const hiddenPreviewRef = useRef<HTMLDivElement>(null);  // outer A4 clip box
     const hiddenContentRef = useRef<HTMLDivElement>(null);  // inner content (gets scaled)
 
-    // Load resume from DB if ID is present
+    // Load resume from DB if ID is present (only once per resume ID)
     useEffect(() => {
-        if (id && user) {
+        if (id && user && loadedResumeIdRef.current !== id) {
+            loadedResumeIdRef.current = id;
             getPortfolioResumeById(id).then(({ data, error }) => {
                 if (data && data.portfolio_data) {
                     setPortfolioData(data.portfolio_data);
@@ -284,6 +286,7 @@ export default function PortfolioBuilderPage() {
                 showConfirmButton: false
             });
             if (!id && data) {
+                loadedResumeIdRef.current = data.id;
                 navigate(`/builder/portfolio/${data.id}`, { replace: true });
             }
         }
