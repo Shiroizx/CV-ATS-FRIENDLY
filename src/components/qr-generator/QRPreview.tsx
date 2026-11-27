@@ -155,7 +155,7 @@ export default function QRPreview({
               visible={showingVCardSplash && tab === 'preview'}
               imageUrl={content.splashDataUrl}
               onDismiss={() => setShowingVCardSplash(false)}
-              initialFadeIn
+              fadeBackdropIn
             />
           )}
 

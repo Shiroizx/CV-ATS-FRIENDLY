@@ -108,22 +108,23 @@ export default function PublicQRViewerPage() {
 
   if (vcardContent) {
     return (
-      <div className="min-h-screen bg-[#f7f9fc] flex flex-col items-center justify-center p-4 sm:py-8">
-        <div className="w-full max-w-md bg-white rounded-[32px] border border-zinc-200 shadow-xl overflow-hidden flex flex-col min-h-[600px]">
+      <div className="min-h-dvh bg-white sm:bg-[#f7f9fc] flex flex-col items-center sm:justify-center sm:p-6 sm:py-10">
+        <div className="w-full flex-1 sm:flex-none sm:max-w-md bg-white sm:rounded-[32px] sm:border sm:border-zinc-200 sm:shadow-xl overflow-hidden flex flex-col sm:min-h-[640px]">
           <VCardMobileView
             content={vcardContent}
             playSplashOnMount
             compact={false}
+            footerNote={
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-5 pb-1"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                Dibuat dengan FreeBuild CV
+              </Link>
+            }
           />
         </div>
-
-        <Link
-          to="/"
-          className="mt-6 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors"
-        >
-          <QrCode className="w-3.5 h-3.5" />
-          Dibuat dengan FreeBuild CV
-        </Link>
       </div>
     );
   }
