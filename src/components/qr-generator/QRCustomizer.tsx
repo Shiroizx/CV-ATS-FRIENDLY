@@ -28,6 +28,8 @@ import { QR_LOGO_PRESETS } from '../../lib/qrPresets';
 import { checkQRScannability, validateLogoFileMeta } from '../../lib/qrHelpers';
 import { convertLogoFileToDataUrl } from '../../lib/qrExport';
 import { showError } from '../../utils/swal';
+import QRDomainSelectorCard from './QRDomainSelectorCard';
+import type { SlugAvailabilityStatus } from './QRDomainSelectorCard';
 
 interface QRCustomizerProps {
   qrTypeLabel?: string;
@@ -36,6 +38,16 @@ interface QRCustomizerProps {
   errors: Record<string, string>;
   onChangeStyle: (style: QRStyleOptions) => void;
   onChangePassword: (opts: QRPasswordOptions) => void;
+  activeSlug: string;
+  defaultShortCode: string;
+  domainSuggestions: readonly string[];
+  customSlugInput: string;
+  domainAvailability: SlugAvailabilityStatus;
+  creditRemaining: number | null;
+  onSelectDefaultDomain: () => void;
+  onSelectSuggestedDomain: (slug: string) => void;
+  onSelectCustomDomainMode: () => void;
+  onChangeCustomDomainInput: (raw: string) => void;
 }
 
 function CustomizerCard({
@@ -269,6 +281,16 @@ export default function QRCustomizer({
   errors,
   onChangeStyle,
   onChangePassword,
+  activeSlug,
+  defaultShortCode,
+  domainSuggestions,
+  customSlugInput,
+  domainAvailability,
+  creditRemaining,
+  onSelectDefaultDomain,
+  onSelectSuggestedDomain,
+  onSelectCustomDomainMode,
+  onChangeCustomDomainInput,
 }: QRCustomizerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPasswordText, setShowPasswordText] = useState(false);
@@ -794,7 +816,24 @@ export default function QRCustomizer({
         )}
       </CustomizerCard>
 
-      {/* 5. Kata sandi */}
+      {/* 5. Domain kustom (di bawah Tambahkan logo) */}
+      <QRDomainSelectorCard
+        domainMode={style.domainMode ?? 'default'}
+        activeSlug={activeSlug}
+        defaultShortCode={defaultShortCode}
+        paidCustomSlug={style.paidCustomDomainSlug ?? null}
+        suggestions={domainSuggestions}
+        customSlugInput={customSlugInput}
+        availability={domainAvailability}
+        creditRemaining={creditRemaining}
+        errorMsg={errors.customDomain}
+        onSelectDefault={onSelectDefaultDomain}
+        onSelectSuggestion={onSelectSuggestedDomain}
+        onSelectCustomMode={onSelectCustomDomainMode}
+        onChangeCustomSlug={onChangeCustomDomainInput}
+      />
+
+      {/* 6. Kata sandi */}
       <CustomizerCard
         icon={<Lock className="w-5 h-5" />}
         title="Kata sandi"

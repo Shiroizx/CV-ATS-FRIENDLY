@@ -152,7 +152,8 @@ export async function checkAndRecordGuestDownload(): Promise<{
  */
 export async function checkAndRecordUserDownload(
     templateType?: string,
-    resumeName?: string
+    resumeName?: string,
+    creditCost = 1
 ): Promise<{
     allowed: boolean;
     count: number;
@@ -163,13 +164,14 @@ export async function checkAndRecordUserDownload(
     if (!user) return { allowed: false, count: 0, max: limits.user };
 
     const currentCount = user.user_metadata?.download_count || 0;
+    const cost = Math.max(1, Math.floor(creditCost));
 
-    if (currentCount >= limits.user) {
+    if (currentCount + cost > limits.user) {
         return { allowed: false, count: currentCount, max: limits.user };
     }
 
     const { error } = await supabase.auth.updateUser({
-        data: { download_count: currentCount + 1 },
+        data: { download_count: currentCount + cost },
     });
 
     if (error) {
@@ -185,7 +187,7 @@ export async function checkAndRecordUserDownload(
         });
     }
 
-    return { allowed: true, count: currentCount + 1, max: limits.user };
+    return { allowed: true, count: currentCount + cost, max: limits.user };
 }
 
 export interface DownloadCreditInfo {

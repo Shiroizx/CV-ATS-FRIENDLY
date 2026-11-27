@@ -20,6 +20,9 @@ function formatSupabaseError(err: unknown): Error {
       'Tabel atau fungsi QR di Supabase belum tersedia. Jalankan skrip sql_qr_codes_setup.sql di Supabase SQL Editor terlebih dahulu.'
     );
   }
+  if (/duplicate key|23505|short_code/i.test(msg)) {
+    return new Error('Nama domain tersebut sudah digunakan oleh QR lain. Pilih nama lain.');
+  }
   return err instanceof Error ? err : new Error(msg || 'Terjadi kesalahan pada layanan database QR.');
 }
 
@@ -232,12 +235,42 @@ export async function verifyPublicQRPassword(
 }
 
 /**
- * Memeriksa dan memotong 1 kredit unduhan akun untuk setiap unduhan file QR Code.
+ * Memeriksa apakah slug subdomain / short_code masih tersedia (belum dipakai QR lain).
+ */
+export async function checkQRSlugAvailable(
+  slug: string,
+  excludeId?: string | null
+): Promise<{ available: boolean; checkSkipped?: boolean; error?: string }> {
+  const clean = slug.trim().toLowerCase();
+  if (clean.length < 3) {
+    return { available: false, error: 'Minimal 3 karakter.' };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('check_qr_slug_available', {
+      p_slug: clean,
+      p_exclude_id: excludeId || null,
+    });
+    if (error) {
+      if (/check_qr_slug_available|does not exist|not found/i.test(error.message)) {
+        return { available: true, checkSkipped: true };
+      }
+      return { available: true, checkSkipped: true, error: error.message };
+    }
+    return { available: Boolean(data) };
+  } catch {
+    return { available: true, checkSkipped: true };
+  }
+}
+
+/**
+ * Memeriksa dan memotong kredit unduhan akun untuk unduhan QR Code atau aktivasi domain kustom.
  */
 export async function consumeQRDownloadCredit(
-  label: string
+  label: string,
+  creditCost = 1
 ): Promise<{ allowed: boolean; credit: DownloadCreditInfo }> {
-  const res = await checkAndRecordUserDownload('qr_code', label);
+  const res = await checkAndRecordUserDownload('qr_code', label, creditCost);
   return {
     allowed: res.allowed,
     credit: {

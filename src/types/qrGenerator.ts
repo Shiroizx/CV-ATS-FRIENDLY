@@ -221,6 +221,8 @@ export type QRFrameType =
   | 'laptop'
   | 'clipboard';
 
+export type QRDomainMode = 'default' | 'suggested' | 'custom';
+
 export interface QRStyleOptions {
   frameType: QRFrameType;
   frameText: string;
@@ -245,6 +247,8 @@ export interface QRStyleOptions {
   logoSize: number;
   logoMargin: number;
   errorCorrection: 'L' | 'M' | 'Q' | 'H';
+  domainMode?: QRDomainMode;
+  paidCustomDomainSlug?: string | null;
 }
 
 export interface QRPasswordOptions {
@@ -294,6 +298,8 @@ export const DEFAULT_QR_STYLE: QRStyleOptions = {
   logoSize: 0.34,
   logoMargin: 6,
   errorCorrection: 'M',
+  domainMode: 'default',
+  paidCustomDomainSlug: null,
 };
 
 export const INITIAL_URL_CONTENT: UrlContent = {

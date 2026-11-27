@@ -1,5 +1,6 @@
 import type {
   QRContentData,
+  QRDomainMode,
   QRPasswordOptions,
   QRStyleOptions,
   UrlContent,
@@ -195,9 +196,17 @@ export function validateQRForm(
  * baru aktif setelah pengguna masuk akun dan mengklik Simpan atau Unduh QR,
  * sekaligus mendukung proteksi sandi, pelacakan scan, dan edit URL tujuan.
  */
-export function resolveUrlQRPayload(origin: string, shortCode: string): string {
+export function resolveUrlQRPayload(
+  origin: string,
+  shortCode: string,
+  domainMode: QRDomainMode = 'default'
+): string {
+  const cleanCode = shortCode.trim();
+  if (domainMode !== 'default' && cleanCode) {
+    return `https://${cleanCode.toLowerCase()}.freebuildcv.tech`;
+  }
   const cleanOrigin = origin.replace(/\/$/, '');
-  return `${cleanOrigin}/q/${shortCode || 'preview'}`;
+  return `${cleanOrigin}/q/${cleanCode || 'preview'}`;
 }
 
 /**
@@ -749,4 +758,184 @@ export function normalizeVCardSkills(skills: readonly string[] | undefined): str
   }
 
   return normalized;
+}
+
+export const PUBLIC_QR_DOMAIN = 'freebuildcv.tech';
+export const CUSTOM_DOMAIN_CREDIT_COST = 3;
+
+export const RESERVED_SUBDOMAINS = new Set([
+  'www',
+  'api',
+  'app',
+  'admin',
+  'auth',
+  'login',
+  'register',
+  'cdn',
+  'static',
+  'assets',
+  'mail',
+  'smtp',
+  'imap',
+  'pop',
+  'ftp',
+  'ns1',
+  'ns2',
+  'vercel',
+  'supabase',
+  'freebuildcv',
+  'dashboard',
+  'settings',
+  'builder',
+  'qr',
+  'q',
+  'help',
+  'support',
+  'status',
+  'blog',
+  'docs',
+]);
+
+const PRIMARY_APP_HOSTS = new Set([
+  PUBLIC_QR_DOMAIN,
+  `www.${PUBLIC_QR_DOMAIN}`,
+]);
+
+/**
+ * Membersihkan input teks agar aman menjadi slug subdomain huruf kecil `[a-z0-9-]`.
+ */
+export function sanitizeSubdomainInput(raw: string, stripEdgeHyphens = true): string {
+  const cleaned = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 32);
+  if (!stripEdgeHyphens) {
+    return cleaned.replace(/^-+/, '');
+  }
+  return cleaned.replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Memvalidasi apakah slug subdomain memenuhi aturan DNS & bukan nama terlarang.
+ */
+export function validateSubdomainSlug(raw: string): {
+  valid: boolean;
+  reason?: 'empty' | 'too_short' | 'format' | 'reserved';
+  error?: string;
+} {
+  const slug = raw.trim().toLowerCase();
+  if (!slug) {
+    return { valid: false, reason: 'empty', error: 'Masukkan nama subdomain terlebih dahulu.' };
+  }
+  if (slug.length < 3) {
+    return { valid: false, reason: 'too_short', error: 'Nama domain minimal 3 karakter.' };
+  }
+  if (!/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/.test(slug)) {
+    return {
+      valid: false,
+      reason: 'format',
+      error: 'Gunakan hanya huruf kecil, angka, dan tanda hubung (-) di tengah.',
+    };
+  }
+  if (RESERVED_SUBDOMAINS.has(slug)) {
+    return {
+      valid: false,
+      reason: 'reserved',
+      error: `Nama "${slug}" dicadangkan untuk sistem. Pilih nama lain.`,
+    };
+  }
+  return { valid: true };
+}
+
+function cleanSlugWords(raw: string): string[] {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
+}
+
+/**
+ * Menghasilkan tepat 4 saran nama subdomain unik & valid dari profil vCard atau URL QR.
+ */
+export function generateDomainSuggestions(
+  content: QRContentData,
+  fallbackShortCode: string
+): string[] {
+  const cleanSeed =
+    fallbackShortCode
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 4) || 'qr26';
+
+  let nameWords: string[] = [];
+  let orgWords: string[] = [];
+
+  if (content.type === 'vcard') {
+    nameWords = cleanSlugWords(content.fullName || content.qrName || content.company);
+    orgWords = cleanSlugWords(content.company);
+  } else {
+    const rawHost = extractDisplayHost(content.url).split('/')[0] || '';
+    const firstLabel = rawHost.replace(/^www\./, '').split('.')[0] || '';
+    nameWords = cleanSlugWords(content.qrName || firstLabel);
+  }
+
+  const first = nameWords[0] || '';
+  const last = nameWords.length > 1 ? nameWords[nameWords.length - 1] : '';
+  const org = orgWords[0] || '';
+
+  const rawCandidates: string[] = [];
+  if (first) {
+    rawCandidates.push(first);
+    if (last && last !== first) {
+      rawCandidates.push(`${first}-${last}`);
+      rawCandidates.push(`${first[0]}-${last}`);
+    }
+    if (org && org !== first) {
+      rawCandidates.push(`${first}-${org}`);
+    }
+    rawCandidates.push(`${first}-${cleanSeed}`);
+    rawCandidates.push(`${first}-id`);
+    rawCandidates.push(`${first}-cv`);
+  }
+
+  rawCandidates.push(
+    `profil-${cleanSeed}`,
+    `kartu-${cleanSeed}`,
+    `tautan-${cleanSeed}`,
+    `qr-${cleanSeed}`,
+    `connect-${cleanSeed}`,
+    `link-${cleanSeed}`
+  );
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of rawCandidates) {
+    const sanitized = sanitizeSubdomainInput(candidate);
+    if (!validateSubdomainSlug(sanitized).valid) continue;
+    if (seen.has(sanitized)) continue;
+    seen.add(sanitized);
+    unique.push(sanitized);
+    if (unique.length === 4) break;
+  }
+
+  return unique;
+}
+
+/**
+ * Mengekstrak subdomain kustom QR dari hostname browser (mis. 'adlzil' dari 'adlzil.freebuildcv.tech').
+ */
+export function extractQRSubdomainFromHostname(hostname: string): string | null {
+  const clean = hostname.trim().toLowerCase().replace(/:\d+$/, '');
+  if (!clean || PRIMARY_APP_HOSTS.has(clean)) return null;
+
+  const suffix = `.${PUBLIC_QR_DOMAIN}`;
+  if (!clean.endsWith(suffix)) return null;
+
+  const sub = clean.slice(0, -suffix.length);
+  if (!sub || sub.includes('.') || sub === 'www') return null;
+  return sub;
 }

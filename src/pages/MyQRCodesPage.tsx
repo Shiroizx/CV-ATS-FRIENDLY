@@ -39,7 +39,11 @@ import FramedQRCanvas from '../components/qr-generator/FramedQRCanvas';
 function QRCardThumbnail({ qr }: { qr: SavedQRCode }) {
   const origin =
     typeof window !== 'undefined' ? window.location.origin : 'https://www.freebuildcv.tech';
-  const payload = resolveUrlQRPayload(origin, qr.short_code);
+  const payload = resolveUrlQRPayload(
+    origin,
+    qr.short_code,
+    qr.style_options?.domainMode ?? 'default'
+  );
   const mergedStyle = { ...DEFAULT_QR_STYLE, ...qr.style_options };
 
   return (
@@ -127,7 +131,11 @@ export default function MyQRCodesPage() {
       }
 
       const origin = window.location.origin;
-      const payload = resolveUrlQRPayload(origin, qr.short_code);
+      const payload = resolveUrlQRPayload(
+        origin,
+        qr.short_code,
+        qr.style_options?.domainMode ?? 'default'
+      );
       await exportQRFile(
         payload,
         { ...DEFAULT_QR_STYLE, ...qr.style_options },
@@ -149,7 +157,11 @@ export default function MyQRCodesPage() {
   };
 
   const handleCopyPayload = async (qr: SavedQRCode) => {
-    const payload = resolveUrlQRPayload(window.location.origin, qr.short_code);
+    const payload = resolveUrlQRPayload(
+      window.location.origin,
+      qr.short_code,
+      qr.style_options?.domainMode ?? 'default'
+    );
     await navigator.clipboard.writeText(payload);
     void showToast('success', 'Tautan QR disalin ke clipboard!');
   };
@@ -270,7 +282,11 @@ export default function MyQRCodesPage() {
 
                       {qr.content_data?.type === 'vcard' ? (
                         <a
-                          href={`/q/${qr.short_code}`}
+                          href={resolveUrlQRPayload(
+                            window.location.origin,
+                            qr.short_code,
+                            qr.style_options?.domainMode ?? 'default'
+                          )}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-blue-600 truncate max-w-full mt-0.5"

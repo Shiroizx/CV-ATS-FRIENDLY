@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,19 +29,25 @@ import {
   INITIAL_VCARD_CONTENT,
 } from '../types/qrGenerator';
 import {
+  CUSTOM_DOMAIN_CREDIT_COST,
   checkQRScannability,
+  generateDomainSuggestions,
   generateShortCode,
   getQRDisplayTitle,
   normalizeUrl,
   resolveUrlQRPayload,
+  sanitizeSubdomainInput,
   validateQRForm,
+  validateSubdomainSlug,
 } from '../lib/qrHelpers';
 import { exportQRFile } from '../lib/qrExport';
 import {
+  checkQRSlugAvailable,
   consumeQRDownloadCredit,
   getQRCodeById,
   saveUserQR,
 } from '../lib/qrService';
+import type { SlugAvailabilityStatus } from '../components/qr-generator/QRDomainSelectorCard';
 import { getRemainingDownloads } from '../lib/downloadCredit';
 import type { DownloadCreditInfo } from '../lib/downloadCredit';
 import { useAuth } from '../contexts/AuthContext';
@@ -112,7 +118,7 @@ function readQRDraft(hasEditId: boolean): StoredQRDraft | null {
       content: coerceContentData(parsed.content),
       style: { ...DEFAULT_QR_STYLE, ...parsed.style },
       shortCode:
-        typeof parsed.shortCode === 'string' && parsed.shortCode.length >= 4
+        typeof parsed.shortCode === 'string' && parsed.shortCode.length >= 3
           ? parsed.shortCode
           : generateShortCode(8),
     };
@@ -201,6 +207,19 @@ export default function QRGeneratorPage() {
   const [shortCode, setShortCode] = useState<string>(
     () => initialDraft?.shortCode ?? generateShortCode(8)
   );
+  const [defaultShortCode, setDefaultShortCode] = useState<string>(() => {
+    const mode = initialDraft?.style.domainMode ?? 'default';
+    return mode === 'default' && initialDraft?.shortCode
+      ? initialDraft.shortCode
+      : generateShortCode(8);
+  });
+  const [customSlugInput, setCustomSlugInput] = useState<string>(() =>
+    initialDraft?.style.domainMode === 'custom' ? initialDraft.shortCode : ''
+  );
+  const [slugCheckResult, setSlugCheckResult] = useState<{
+    slug: string;
+    status: 'available' | 'taken';
+  } | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -218,13 +237,17 @@ export default function QRGeneratorPage() {
   if (prevParamId !== id) {
     setPrevParamId(id);
     if (!id) {
+      const freshCode = generateShortCode(8);
       setStep(1);
       setMaxReachedStep(1);
       setSelectedType('url');
       setContent(INITIAL_URL_CONTENT);
       setStyle(DEFAULT_QR_STYLE);
       setPasswordOpts({ enabled: false, password: '', alreadyProtected: false });
-      setShortCode(generateShortCode(8));
+      setShortCode(freshCode);
+      setDefaultShortCode(freshCode);
+      setCustomSlugInput('');
+      setSlugCheckResult(null);
       setSavedId(null);
       setLoadedDataId(null);
       setHasUnsavedChanges(false);
@@ -251,6 +274,32 @@ export default function QRGeneratorPage() {
       cancelled = true;
     };
   }, [user]);
+
+  // Cek ketersediaan subdomain kustom saat user mengetik di langkah 3
+  useEffect(() => {
+    if (step !== 3 || !user) return;
+    if ((style.domainMode ?? 'default') !== 'custom') return;
+    const clean = sanitizeSubdomainInput(customSlugInput);
+    if (!validateSubdomainSlug(clean).valid) return;
+    if (style.paidCustomDomainSlug === clean && savedId) return;
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void checkQRSlugAvailable(clean, savedId).then(({ available }) => {
+        if (!cancelled) {
+          setSlugCheckResult({
+            slug: clean,
+            status: available ? 'available' : 'taken',
+          });
+        }
+      });
+    }, 380);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [step, user, style.domainMode, style.paidCustomDomainSlug, customSlugInput, savedId]);
 
   // Simpan draft otomatis di browser agar tidak hilang saat pengguna diarahkan ke Login/Register
   useEffect(() => {
@@ -282,11 +331,17 @@ export default function QRGeneratorPage() {
         return;
       }
 
+      const loadedStyle = { ...DEFAULT_QR_STYLE, ...data.style_options };
+      const loadedMode = loadedStyle.domainMode ?? 'default';
       setSavedId(data.id);
       setShortCode(data.short_code);
+      setDefaultShortCode(
+        loadedMode === 'default' ? data.short_code : generateShortCode(8)
+      );
+      setCustomSlugInput(loadedMode === 'custom' ? data.short_code : '');
       setSelectedType(data.qr_type);
       setContent(coerceContentData(data.content_data, data.qr_type));
-      setStyle({ ...DEFAULT_QR_STYLE, ...data.style_options });
+      setStyle(loadedStyle);
       setPasswordOpts({
         enabled: data.requires_password,
         password: '',
@@ -302,9 +357,86 @@ export default function QRGeneratorPage() {
     };
   }, [id, user, loadedDataId, navigate]);
 
+  const domainSuggestions = useMemo(
+    () => generateDomainSuggestions(content, defaultShortCode),
+    [content, defaultShortCode]
+  );
+
+  const cleanCustomSlug = sanitizeSubdomainInput(customSlugInput);
+  const domainAvailability: SlugAvailabilityStatus =
+    (style.domainMode ?? 'default') !== 'custom' ||
+    !validateSubdomainSlug(cleanCustomSlug).valid
+      ? 'idle'
+      : style.paidCustomDomainSlug === cleanCustomSlug && savedId
+        ? 'available'
+        : slugCheckResult?.slug === cleanCustomSlug
+          ? slugCheckResult.status
+          : user
+            ? 'checking'
+            : 'idle';
+
+  const activeSlug =
+    style.domainMode === 'custom'
+      ? cleanCustomSlug || shortCode
+      : shortCode;
+
   const origin =
     typeof window !== 'undefined' ? window.location.origin : 'https://www.freebuildcv.tech';
-  const qrPayload = resolveUrlQRPayload(origin, shortCode);
+  const qrPayload = resolveUrlQRPayload(
+    origin,
+    activeSlug,
+    style.domainMode ?? 'default'
+  );
+
+  const clearDomainError = () => {
+    if (errors.customDomain) {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.customDomain;
+        return copy;
+      });
+    }
+  };
+
+  const handleSelectDefaultDomain = () => {
+    setStyle((prev) => ({ ...prev, domainMode: 'default' }));
+    setShortCode(defaultShortCode);
+    setHasUnsavedChanges(true);
+    setHasDownloaded(false);
+    clearDomainError();
+  };
+
+  const handleSelectSuggestedDomain = (slug: string) => {
+    setStyle((prev) => ({ ...prev, domainMode: 'suggested' }));
+    setShortCode(slug);
+    setHasUnsavedChanges(true);
+    setHasDownloaded(false);
+    clearDomainError();
+  };
+
+  const handleSelectCustomDomainMode = () => {
+    setStyle((prev) => ({ ...prev, domainMode: 'custom' }));
+    const clean = sanitizeSubdomainInput(customSlugInput);
+    if (clean) setShortCode(clean);
+    setHasUnsavedChanges(true);
+    setHasDownloaded(false);
+    clearDomainError();
+  };
+
+  const handleChangeCustomDomainInput = (raw: string) => {
+    const typingClean = sanitizeSubdomainInput(raw, false);
+    setCustomSlugInput(typingClean);
+    const finalized = sanitizeSubdomainInput(typingClean, true);
+    setStyle((prev) =>
+      prev.domainMode === 'custom' ? prev : { ...prev, domainMode: 'custom' }
+    );
+    if (finalized) {
+      setShortCode(finalized);
+    }
+    setHasUnsavedChanges(true);
+    setHasDownloaded(false);
+    clearDomainError();
+  };
 
   const updateContent = (next: QRContentData) => {
     setContent(next);
@@ -380,6 +512,16 @@ export default function QRGeneratorPage() {
     };
   };
 
+  const isUsingCustomDomain = (style.domainMode ?? 'default') === 'custom';
+  const isCustomDomainPaid = Boolean(
+    isUsingCustomDomain &&
+      style.paidCustomDomainSlug &&
+      style.paidCustomDomainSlug === activeSlug
+  );
+  const needsCustomDomainCharge = Boolean(
+    isUsingCustomDomain && !isCustomDomainPaid
+  );
+
   const handleInvalidValidation = (validationErrors: Record<string, string>) => {
     setErrors(validationErrors);
     const step2Err =
@@ -394,27 +536,81 @@ export default function QRGeneratorPage() {
     }
     void showToast(
       'error',
-      step2Err || validationErrors.password || 'Periksa kembali data QR Anda.'
+      step2Err ||
+        validationErrors.customDomain ||
+        validationErrors.password ||
+        'Periksa kembali data QR Anda.'
     );
   };
 
-  const handleSaveToSupabase = async (): Promise<boolean> => {
+  const handleSaveToSupabase = async (options?: {
+    skipCreditCharge?: boolean;
+    styleOverride?: QRStyleOptions;
+  }): Promise<boolean> => {
     const validation = validateQRForm(content, passwordOpts);
     if (!validation.isValid) {
       handleInvalidValidation(validation.errors);
       return false;
     }
 
+    const activeDomainMode = (options?.styleOverride ?? style).domainMode ?? 'default';
+    if (activeDomainMode === 'custom') {
+      const domainCheck = validateSubdomainSlug(activeSlug);
+      if (!domainCheck.valid) {
+        handleInvalidValidation({
+          customDomain: domainCheck.error || 'Nama domain kustom tidak valid.',
+        });
+        return false;
+      }
+    }
+
+    if (activeDomainMode !== 'default') {
+      const avail = await checkQRSlugAvailable(activeSlug, savedId);
+      if (!avail.available) {
+        handleInvalidValidation({
+          customDomain:
+            activeDomainMode === 'custom'
+              ? 'Nama domain tersebut sudah dipakai QR lain. Pilih nama lain.'
+              : 'Saran domain tersebut sudah dipakai QR lain, pilih saran lainnya.',
+        });
+        return false;
+      }
+    }
+
+    if (needsCustomDomainCharge && !options?.skipCreditCharge) {
+      const preCheck = await getRemainingDownloads(true);
+      setCreditInfo(preCheck);
+      if (preCheck.remaining < CUSTOM_DOMAIN_CREDIT_COST) {
+        await showError(
+          'Kredit Tidak Cukup',
+          `Memakai nama domain kustom sendiri memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus (sisa kredit Anda: ${preCheck.remaining}/${preCheck.max}). Pilih salah satu dari 4 saran domain gratis agar hemat kredit!`
+        );
+        return false;
+      }
+      const confirmRes = await showConfirm(
+        'Aktifkan Custom Domain?',
+        `Menggunakan nama domain kustom "${activeSlug}.freebuildcv.tech" memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit Anda setelah disimpan: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
+        `Ya, Pakai ${CUSTOM_DOMAIN_CREDIT_COST} Kredit`,
+        'Batal'
+      );
+      if (!confirmRes.isConfirmed) return false;
+    }
+
     const normalizedContent = normalizeContentForSave(content);
+    const styleToSave =
+      options?.styleOverride ??
+      (needsCustomDomainCharge
+        ? { ...style, paidCustomDomainSlug: activeSlug }
+        : style);
 
     setIsSaving(true);
     const { data, error } = await saveUserQR({
       id: savedId,
-      shortCode,
+      shortCode: activeSlug,
       qrType: normalizedContent.type,
       title: getQRDisplayTitle(normalizedContent),
       content: normalizedContent,
-      style,
+      style: styleToSave,
       passwordEnabled: passwordOpts.enabled,
       newPassword: passwordOpts.password,
     });
@@ -428,7 +624,16 @@ export default function QRGeneratorPage() {
       return false;
     }
 
+    if (needsCustomDomainCharge && !options?.skipCreditCharge) {
+      const { credit } = await consumeQRDownloadCredit(
+        `Custom Domain (${activeSlug}.freebuildcv.tech)`,
+        CUSTOM_DOMAIN_CREDIT_COST
+      );
+      setCreditInfo(credit);
+    }
+
     setContent(normalizedContent);
+    setStyle(styleToSave);
     setSavedId(data.id);
     setShortCode(data.short_code);
     setPasswordOpts({
@@ -506,6 +711,16 @@ export default function QRGeneratorPage() {
       return;
     }
 
+    if (isUsingCustomDomain) {
+      const domainCheck = validateSubdomainSlug(activeSlug);
+      if (!domainCheck.valid) {
+        handleInvalidValidation({
+          customDomain: domainCheck.error || 'Nama domain kustom tidak valid.',
+        });
+        return;
+      }
+    }
+
     const scannability = checkQRScannability(style);
     if (scannability.warnings.length > 0) {
       const res = await showConfirm(
@@ -517,21 +732,52 @@ export default function QRGeneratorPage() {
       if (!res.isConfirmed) return;
     }
 
+    const requiredCreditCost = needsCustomDomainCharge
+      ? CUSTOM_DOMAIN_CREDIT_COST
+      : 1;
+
     setIsExporting(true);
     try {
       const preCheck = await getRemainingDownloads(true);
       setCreditInfo(preCheck);
-      if (preCheck.remaining <= 0) {
-        await showDownloadLimitReached(preCheck.count, preCheck.max);
+      if (preCheck.remaining < requiredCreditCost) {
+        if (needsCustomDomainCharge) {
+          await showError(
+            'Kredit Tidak Cukup',
+            `Mengaktifkan custom domain sendiri memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus (sisa kredit Anda: ${preCheck.remaining}/${preCheck.max}). Pilih salah satu dari 4 saran domain gratis agar tetap 1 kredit.`
+          );
+        } else {
+          await showDownloadLimitReached(preCheck.count, preCheck.max);
+        }
         return;
       }
 
-      const ok = await handleSaveToSupabase();
+      if (needsCustomDomainCharge) {
+        const confirmDomain = await showConfirm(
+          'Gunakan 3 Kredit Sekaligus?',
+          `Mengaktifkan & mengunduh QR dengan domain kustom "${activeSlug}.freebuildcv.tech" akan memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit setelahnya: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
+          `Ya, Lanjutkan (${CUSTOM_DOMAIN_CREDIT_COST} Kredit)`,
+          'Batal'
+        );
+        if (!confirmDomain.isConfirmed) return;
+      }
+
+      const nextStyle = needsCustomDomainCharge
+        ? { ...style, paidCustomDomainSlug: activeSlug }
+        : style;
+
+      const ok = await handleSaveToSupabase({
+        skipCreditCharge: true,
+        styleOverride: nextStyle,
+      });
       if (!ok) return;
 
       const titleSlug = getQRDisplayTitle(content);
       const { allowed, credit } = await consumeQRDownloadCredit(
-        `${titleSlug} (${format.toUpperCase()})`
+        needsCustomDomainCharge
+          ? `${titleSlug} (${activeSlug}.freebuildcv.tech - ${format.toUpperCase()})`
+          : `${titleSlug} (${format.toUpperCase()})`,
+        requiredCreditCost
       );
       setCreditInfo(credit);
       if (!allowed) {
@@ -539,7 +785,12 @@ export default function QRGeneratorPage() {
         return;
       }
 
-      await exportQRFile(qrPayload, style, format, titleSlug);
+      const exportPayload = resolveUrlQRPayload(
+        origin,
+        activeSlug,
+        nextStyle.domainMode ?? 'default'
+      );
+      await exportQRFile(exportPayload, nextStyle, format, titleSlug);
       setHasDownloaded(true);
       void showSuccess(
         'Berhasil Disimpan & Diunduh',
@@ -694,6 +945,16 @@ export default function QRGeneratorPage() {
                     errors={errors}
                     onChangeStyle={updateStyle}
                     onChangePassword={updatePassword}
+                    activeSlug={activeSlug}
+                    defaultShortCode={defaultShortCode}
+                    domainSuggestions={domainSuggestions}
+                    customSlugInput={customSlugInput}
+                    domainAvailability={domainAvailability}
+                    creditRemaining={displayedCredit ? displayedCredit.remaining : null}
+                    onSelectDefaultDomain={handleSelectDefaultDomain}
+                    onSelectSuggestedDomain={handleSelectSuggestedDomain}
+                    onSelectCustomDomainMode={handleSelectCustomDomainMode}
+                    onChangeCustomDomainInput={handleChangeCustomDomainInput}
                   />
                 </motion.div>
               )}

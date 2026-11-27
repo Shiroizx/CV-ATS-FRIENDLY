@@ -4,6 +4,7 @@ import { Menu, X, Home, FileText, Heart, ScrollText, HelpCircle, LogOut, User, L
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getRemainingDownloads } from '../lib/downloadCredit';
+import { extractQRSubdomainFromHostname } from '../lib/qrHelpers';
 import Swal from 'sweetalert2';
 
 export default function Navbar() {
@@ -91,7 +92,16 @@ export default function Navbar() {
         }
     };
 
-    if (location.pathname === '/login' || location.pathname === '/register' || location.pathname.startsWith('/q/')) {
+    const isQRSubdomain =
+        typeof window !== 'undefined' &&
+        Boolean(extractQRSubdomainFromHostname(window.location.hostname));
+
+    if (
+        location.pathname === '/login' ||
+        location.pathname === '/register' ||
+        location.pathname.startsWith('/q/') ||
+        isQRSubdomain
+    ) {
         return null;
     }
 

@@ -35,8 +35,14 @@ function useIsDesktopSm(): boolean {
   return isDesktop;
 }
 
-export default function PublicQRViewerPage() {
-  const { shortCode } = useParams<{ shortCode: string }>();
+export default function PublicQRViewerPage({
+  overrideShortCode,
+}: {
+  overrideShortCode?: string;
+}) {
+  const { shortCode: routeShortCode } = useParams<{ shortCode: string }>();
+  const shortCode = overrideShortCode || routeShortCode;
+  const isSubdomainView = Boolean(overrideShortCode);
   const isDesktop = useIsDesktopSm();
   const [loading, setLoading] = useState(Boolean(shortCode));
   const [isNotActivated, setIsNotActivated] = useState(!shortCode);
@@ -141,7 +147,15 @@ export default function PublicQRViewerPage() {
   };
 
   if (vcardContent) {
-    const footerLink = (
+    const footerLink = isSubdomainView ? (
+      <a
+        href="https://www.freebuildcv.tech"
+        className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-2 pb-1"
+      >
+        <QrCode className="w-3.5 h-3.5" />
+        Dibuat dengan FreeBuild CV
+      </a>
+    ) : (
       <Link
         to="/"
         className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-2 pb-1"
@@ -225,18 +239,37 @@ export default function PublicQRViewerPage() {
               </p>
             </div>
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
-              <Link
-                to="/qr-generator"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Buat &amp; Aktifkan QR Code
-              </Link>
-              <Link
-                to="/"
-                className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 text-sm font-semibold hover:bg-zinc-50 transition-colors"
-              >
-                Kembali ke Beranda
-              </Link>
+              {isSubdomainView ? (
+                <>
+                  <a
+                    href="https://www.freebuildcv.tech/qr-generator"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Buat &amp; Aktifkan QR Code
+                  </a>
+                  <a
+                    href="https://www.freebuildcv.tech"
+                    className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 text-sm font-semibold hover:bg-zinc-50 transition-colors"
+                  >
+                    Kembali ke Beranda
+                  </a>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/qr-generator"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Buat &amp; Aktifkan QR Code
+                  </Link>
+                  <Link
+                    to="/"
+                    className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 rounded-xl border border-zinc-200 bg-white text-zinc-700 text-sm font-semibold hover:bg-zinc-50 transition-colors"
+                  >
+                    Kembali ke Beranda
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         ) : errorMsg ? (
@@ -246,12 +279,21 @@ export default function PublicQRViewerPage() {
             </div>
             <h1 className="text-xl font-bold text-zinc-900">QR Tidak Tersedia</h1>
             <p className="text-sm text-zinc-600">{errorMsg}</p>
-            <Link
-              to="/"
-              className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition-colors"
-            >
-              Kembali ke Beranda
-            </Link>
+            {isSubdomainView ? (
+              <a
+                href="https://www.freebuildcv.tech"
+                className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition-colors"
+              >
+                Kembali ke Beranda
+              </a>
+            ) : (
+              <Link
+                to="/"
+                className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition-colors"
+              >
+                Kembali ke Beranda
+              </Link>
+            )}
           </div>
         ) : requiresPassword && !unlockedUrl ? (
           <form onSubmit={handleUnlock} className="space-y-5 text-left">

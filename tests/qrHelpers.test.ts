@@ -15,6 +15,10 @@ import {
   computeVCardImageCropLayout,
   generateVCardBannerWavePaths,
   normalizeVCardSkills,
+  sanitizeSubdomainInput,
+  validateSubdomainSlug,
+  generateDomainSuggestions,
+  extractQRSubdomainFromHostname,
 } from '../src/lib/qrHelpers.ts';
 import {
   DEFAULT_QR_STYLE,
@@ -260,4 +264,45 @@ test('normalizeVCardSkills trims, deduplicates case-insensitively, and enforces 
     'UI/UX',
   ]);
   assert.equal(normalizeVCardSkills(undefined).length, 0);
+});
+
+test('subdomain normalization, validation, suggestions, and hostname parsing work accurately', () => {
+  assert.equal(sanitizeSubdomainInput('  Adlildzil Arifah!! '), 'adlildzil-arifah');
+  assert.equal(validateSubdomainSlug('adlzil').valid, true);
+  assert.equal(validateSubdomainSlug('ab').valid, false);
+  assert.equal(validateSubdomainSlug('www').valid, false);
+  assert.equal(validateSubdomainSlug('admin').valid, false);
+  assert.equal(validateSubdomainSlug('-adlzil').valid, false);
+
+  const suggestions = generateDomainSuggestions(
+    {
+      ...INITIAL_VCARD_CONTENT,
+      fullName: 'Adlildzil Arifah',
+      company: 'Nara Institute',
+    },
+    'LL52NTBx'
+  );
+  assert.equal(suggestions.length, 4);
+  assert.equal(new Set(suggestions).size, 4);
+  for (const s of suggestions) {
+    assert.equal(validateSubdomainSlug(s).valid, true);
+  }
+
+  const fallbackSuggestions = generateDomainSuggestions(INITIAL_VCARD_CONTENT, 'LL52NTBx');
+  assert.equal(fallbackSuggestions.length, 4);
+  assert.equal(new Set(fallbackSuggestions).size, 4);
+
+  assert.equal(extractQRSubdomainFromHostname('adlzil.freebuildcv.tech'), 'adlzil');
+  assert.equal(extractQRSubdomainFromHostname('ADLZIL.freebuildcv.tech'), 'adlzil');
+  assert.equal(extractQRSubdomainFromHostname('www.freebuildcv.tech'), null);
+  assert.equal(extractQRSubdomainFromHostname('freebuildcv.tech'), null);
+  assert.equal(extractQRSubdomainFromHostname('localhost:5173'), null);
+  assert.equal(
+    resolveUrlQRPayload('https://www.freebuildcv.tech', 'adlzil', 'custom'),
+    'https://adlzil.freebuildcv.tech'
+  );
+  assert.equal(
+    resolveUrlQRPayload('http://localhost:5173', 'adlzil', 'suggested'),
+    'https://adlzil.freebuildcv.tech'
+  );
 });

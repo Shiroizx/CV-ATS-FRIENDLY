@@ -27,6 +27,7 @@ ALTER TABLE public.qr_codes DROP CONSTRAINT IF EXISTS qr_codes_style_options_che
 ALTER TABLE public.qr_codes ADD CONSTRAINT qr_codes_style_options_check CHECK (octet_length(style_options::text) <= 524288);
 
 CREATE INDEX IF NOT EXISTS idx_qr_codes_short_code ON public.qr_codes (short_code);
+CREATE INDEX IF NOT EXISTS idx_qr_codes_short_code_lower ON public.qr_codes (lower(short_code));
 CREATE INDEX IF NOT EXISTS idx_qr_codes_user_id ON public.qr_codes (user_id);
 
 -- 2. RLS — hanya pemilik yang login yang dapat mengelola miliknya
@@ -104,8 +105,22 @@ BEGIN
             v_new_hash := v_existing_hash;
         END IF;
 
+        IF p_short_code IS NOT NULL AND length(trim(p_short_code)) > 0 THEN
+            IF length(trim(p_short_code)) < 3 THEN
+                RAISE EXCEPTION 'Nama domain / short_code minimal 3 karakter.';
+            END IF;
+            IF EXISTS (
+                SELECT 1 FROM public.qr_codes qr2
+                WHERE lower(qr2.short_code) = lower(trim(p_short_code))
+                  AND qr2.id <> p_id
+            ) THEN
+                RAISE EXCEPTION 'Nama domain / kode pendek tersebut sudah digunakan oleh QR lain.';
+            END IF;
+        END IF;
+
         UPDATE public.qr_codes qr
         SET
+            short_code = COALESCE(NULLIF(trim(p_short_code), ''), qr.short_code),
             qr_type = p_qr_type,
             title = v_clean_title,
             content_data = p_content_data,
@@ -115,8 +130,15 @@ BEGIN
         WHERE qr.id = p_id AND qr.user_id = v_user_id
         RETURNING qr.id INTO v_saved_id;
     ELSE
-        IF p_short_code IS NULL OR length(trim(p_short_code)) < 4 THEN
-            RAISE EXCEPTION 'short_code tidak valid.';
+        IF p_short_code IS NULL OR length(trim(p_short_code)) < 3 THEN
+            RAISE EXCEPTION 'Nama domain / short_code tidak valid (minimal 3 karakter).';
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM public.qr_codes qr2
+            WHERE lower(qr2.short_code) = lower(trim(p_short_code))
+        ) THEN
+            RAISE EXCEPTION 'Nama domain / kode pendek tersebut sudah digunakan oleh QR lain.';
         END IF;
 
         IF p_password_enabled AND p_new_password IS NOT NULL AND length(trim(p_new_password)) > 0 THEN
@@ -135,7 +157,7 @@ BEGIN
             password_hash
         )
         VALUES (
-            p_short_code,
+            trim(p_short_code),
             v_user_id,
             p_qr_type,
             v_clean_title,
@@ -168,6 +190,35 @@ $$;
 REVOKE ALL ON FUNCTION public.save_user_qr(uuid, text, text, text, jsonb, jsonb, boolean, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.save_user_qr(uuid, text, text, text, jsonb, jsonb, boolean, text) TO authenticated;
 
+-- 3b. RPC untuk mengecek ketersediaan slug/subdomain sebelum disimpan
+CREATE OR REPLACE FUNCTION public.check_qr_slug_available(
+    p_slug text,
+    p_exclude_id uuid DEFAULT NULL
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_clean text;
+BEGIN
+    v_clean := lower(trim(COALESCE(p_slug, '')));
+    IF length(v_clean) < 3 THEN
+        RETURN false;
+    END IF;
+
+    RETURN NOT EXISTS (
+        SELECT 1
+        FROM public.qr_codes qr
+        WHERE lower(qr.short_code) = v_clean
+          AND (p_exclude_id IS NULL OR qr.id <> p_exclude_id)
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.check_qr_slug_available(text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.check_qr_slug_available(text, uuid) TO authenticated;
+
 -- 4. RPC untuk membaca QR publik saat dipindai kamera HP (tidak membocorkan URL jika terkunci sandi)
 CREATE OR REPLACE FUNCTION public.get_public_qr(p_short_code text)
 RETURNS TABLE (
@@ -186,7 +237,8 @@ DECLARE
 BEGIN
     SELECT * INTO v_row
     FROM public.qr_codes qr
-    WHERE qr.short_code = p_short_code AND qr.is_active = true
+    WHERE lower(qr.short_code) = lower(trim(COALESCE(p_short_code, '')))
+      AND qr.is_active = true
     LIMIT 1;
 
     IF NOT FOUND THEN
@@ -228,7 +280,8 @@ DECLARE
 BEGIN
     SELECT * INTO v_row
     FROM public.qr_codes qr
-    WHERE qr.short_code = p_short_code AND qr.is_active = true
+    WHERE lower(qr.short_code) = lower(trim(COALESCE(p_short_code, '')))
+      AND qr.is_active = true
     LIMIT 1;
 
     IF NOT FOUND OR v_row.password_hash IS NULL THEN

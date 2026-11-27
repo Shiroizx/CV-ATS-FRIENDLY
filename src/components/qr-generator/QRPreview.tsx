@@ -87,9 +87,11 @@ export default function QRPreview({
   }, [showingVCardSplash]);
 
   const displayHost =
-    content.type === 'url'
-      ? extractDisplayHost(content.url)
-      : getQRDisplayTitle(content);
+    step > 1 && (style.domainMode ?? 'default') !== 'default'
+      ? extractDisplayHost(qrPayload)
+      : content.type === 'url'
+        ? extractDisplayHost(content.url)
+        : getQRDisplayTitle(content);
   const safeHref =
     content.type === 'url' ? sanitizeExternalUrl(content.url) : '#';
   const isVCardPreviewTab = Boolean(

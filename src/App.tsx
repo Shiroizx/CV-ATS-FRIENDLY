@@ -25,12 +25,31 @@ import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import AdminRoute from "./components/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { extractQRSubdomainFromHostname } from "./lib/qrHelpers";
 
 const QRGeneratorPage = lazy(() => import("./pages/QRGeneratorPage"));
 const PublicQRViewerPage = lazy(() => import("./pages/PublicQRViewerPage"));
 const MyQRCodesPage = lazy(() => import("./pages/MyQRCodesPage"));
 
 function App() {
+  const qrSubdomain =
+    typeof window !== "undefined"
+      ? extractQRSubdomainFromHostname(window.location.hostname)
+      : null;
+
+  if (qrSubdomain) {
+    return (
+      <AuthProvider>
+        <Router>
+          <Suspense fallback={<div className="min-h-screen bg-[#f7f9fc]" />}>
+            <PublicQRViewerPage overrideShortCode={qrSubdomain} />
+          </Suspense>
+        </Router>
+        <Analytics />
+      </AuthProvider>
+    );
+  }
+
   return (
     <AuthProvider>
       <Router>
