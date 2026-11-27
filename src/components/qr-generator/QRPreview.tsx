@@ -95,6 +95,9 @@ export default function QRPreview({
   const isVCardPreviewTab = Boolean(
     step > 1 && content.type === 'vcard' && tab === 'preview'
   );
+  const isVCardHasBanner = Boolean(
+    isVCardPreviewTab && content.type === 'vcard' && content.bannerDataUrl
+  );
   const vcardHeroPrimary =
     content.type === 'vcard' &&
     /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(content.primaryColor)
@@ -147,6 +150,8 @@ export default function QRPreview({
       <IPhone18ProMaxMockup
         exactSize={false}
         statusBarBg={isVCardPreviewTab ? vcardHeroPrimary : undefined}
+        overlayStatusBar={isVCardHasBanner}
+        statusBarLightText={isVCardHasBanner}
         bottomBg={isVCardPreviewTab ? vcardBottomBg : '#FFFFFF'}
         splashVisible={Boolean(
           content.type === 'vcard' && step > 1 && showingVCardSplash && tab === 'preview'
@@ -212,7 +217,11 @@ export default function QRPreview({
 
             {tab === 'preview' ? (
               content.type === 'vcard' ? (
-                <VCardMobileView content={content} compact />
+                <VCardMobileView
+                  content={content}
+                  compact
+                  hasTopMockupBar={isVCardHasBanner}
+                />
               ) : (
                 /* Pratinjau halaman tujuan (sesuai screenshot image.png) */
                 <div className="flex-1 bg-indigo-100/70 p-3 flex flex-col gap-3">

@@ -2,6 +2,7 @@ import QRCodeStyling from 'qr-code-styling';
 import type { DrawType, Options } from 'qr-code-styling';
 import type { QRStyleOptions } from '../types/qrGenerator.ts';
 import { composeFrameBackdropSvg, composeFramedSvg } from './qrFrameSvg.ts';
+import { computeVCardImageCropLayout } from './qrHelpers.ts';
 
 /**
  * Mengonversi opsi desain ke konfigurasi resmi `qr-code-styling`.
@@ -291,11 +292,17 @@ export interface VCardImageTransformOptions {
   flipV: boolean;
   rotateDeg: number;
   squareCrop?: boolean;
+  /** Rasio lebar/tinggi target (misalnya 16/10 untuk banner); memotong proporsional cover. */
+  aspectRatio?: number;
+  /** Pergeseran horizontal ternormalisasi terhadap lebar bingkai crop. */
+  offsetX?: number;
+  /** Pergeseran vertikal ternormalisasi terhadap tinggi bingkai crop. */
+  offsetY?: number;
   maxChars?: number;
 }
 
 /**
- * Menerapkan zoom, balik (flip), putar (rotate), lalu mengompres gambar profil/splash vCard
+ * Menerapkan zoom, geser (pan), balik (flip), putar (rotate), lalu mengompres gambar profil/banner/splash vCard
  * agar ringan disimpan di JSONB (<= 18 KB per gambar).
  */
 export async function processVCardImageDataUrl(
@@ -317,12 +324,22 @@ export async function processVCardImageDataUrl(
   const baseW = swapped ? srcH : srcW;
   const baseH = swapped ? srcW : srcH;
 
-  const attempts = [
-    { maxSide: 280, mime: 'image/webp', quality: 0.84 },
-    { maxSide: 220, mime: 'image/webp', quality: 0.76 },
-    { maxSide: 180, mime: 'image/jpeg', quality: 0.72 },
-    { maxSide: 140, mime: 'image/jpeg', quality: 0.65 },
-  ];
+  const attempts = opts.aspectRatio
+    ? [
+        { maxSide: 800, mime: 'image/webp', quality: 0.86 },
+        { maxSide: 720, mime: 'image/webp', quality: 0.80 },
+        { maxSide: 640, mime: 'image/webp', quality: 0.74 },
+        { maxSide: 560, mime: 'image/webp', quality: 0.68 },
+        { maxSide: 480, mime: 'image/jpeg', quality: 0.76 },
+        { maxSide: 360, mime: 'image/jpeg', quality: 0.68 },
+      ]
+    : [
+        { maxSide: 360, mime: 'image/webp', quality: 0.86 },
+        { maxSide: 300, mime: 'image/webp', quality: 0.80 },
+        { maxSide: 240, mime: 'image/webp', quality: 0.74 },
+        { maxSide: 200, mime: 'image/jpeg', quality: 0.74 },
+        { maxSide: 160, mime: 'image/jpeg', quality: 0.68 },
+      ];
 
   let latest = rawDataUrl;
   for (const cfg of attempts) {
@@ -330,6 +347,9 @@ export async function processVCardImageDataUrl(
     if (opts.squareCrop) {
       canvas.width = cfg.maxSide;
       canvas.height = cfg.maxSide;
+    } else if (opts.aspectRatio && opts.aspectRatio > 0) {
+      canvas.width = cfg.maxSide;
+      canvas.height = Math.max(1, Math.round(cfg.maxSide / opts.aspectRatio));
     } else {
       const ratio = Math.min(1, cfg.maxSide / Math.max(baseW, baseH));
       canvas.width = Math.max(1, Math.round(baseW * ratio));
@@ -339,24 +359,39 @@ export async function processVCardImageDataUrl(
     const ctx = canvas.getContext('2d');
     if (!ctx) break;
 
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     if (cfg.mime === 'image/jpeg') {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    const isCoverCrop = opts.squareCrop || Boolean(opts.aspectRatio && opts.aspectRatio > 0);
+    const layout = computeVCardImageCropLayout({
+      srcW,
+      srcH,
+      frameW: canvas.width,
+      frameH: canvas.height,
+      zoom: opts.zoom,
+      rotateDeg: opts.rotateDeg,
+      cover: isCoverCrop,
+      offsetX: opts.offsetX,
+      offsetY: opts.offsetY,
+    });
+
     ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.translate(canvas.width / 2 + layout.dx, canvas.height / 2 + layout.dy);
     ctx.scale(opts.flipH ? -1 : 1, opts.flipV ? -1 : 1);
-    ctx.rotate((normalizedRot * Math.PI) / 180);
+    ctx.rotate((layout.normalizedRot * Math.PI) / 180);
 
-    const coverScale = opts.squareCrop
-      ? Math.max(canvas.width / baseW, canvas.height / baseH)
-      : Math.min(canvas.width / baseW, canvas.height / baseH);
-    const finalScale = coverScale * Math.max(1, opts.zoom);
-
-    const drawW = srcW * finalScale;
-    const drawH = srcH * finalScale;
-    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.drawImage(
+      img,
+      -layout.drawW / 2,
+      -layout.drawH / 2,
+      layout.drawW,
+      layout.drawH
+    );
     ctx.restore();
 
     latest = canvas.toDataURL(cfg.mime, cfg.quality);

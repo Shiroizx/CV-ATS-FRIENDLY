@@ -115,11 +115,42 @@ export interface VCardSocialItem {
   label: string;
 }
 
+export type VCardAccordionSectionKey = 'contact' | 'company' | 'summary' | 'social';
+export type VCardDefaultOpenMode = 'none' | VCardAccordionSectionKey;
+
+export type VCardBannerWaveShape =
+  | 'smooth'
+  | 'organic'
+  | 'layered'
+  | 'arch'
+  | 'sharp';
+
+export interface VCardBannerWaveConfig {
+  enabled: boolean;
+  shape: VCardBannerWaveShape;
+  complexity: number;
+  height: number;
+  seed: number;
+  flipX: boolean;
+}
+
+export const DEFAULT_VCARD_BANNER_WAVE: VCardBannerWaveConfig = {
+  enabled: false,
+  shape: 'smooth',
+  complexity: 3,
+  height: 48,
+  seed: 101,
+  flipX: false,
+};
+
 export interface VCardContent {
   type: 'vcard';
   qrName: string;
   primaryColor: string;
   secondaryColor: string;
+  bannerDataUrl: string | null;
+  bannerFileName: string;
+  bannerWave?: VCardBannerWaveConfig;
   fullName: string;
   avatarDataUrl: string | null;
   avatarFileName: string;
@@ -137,6 +168,11 @@ export interface VCardContent {
   country: string;
   addressUrl: string;
   socials: VCardSocialItem[];
+  availabilityStatus?: string;
+  workingHours?: string;
+  skills?: string[];
+  showShareButton?: boolean;
+  defaultOpenSection?: VCardDefaultOpenMode;
   splashDataUrl: string | null;
   splashFileName: string;
 }
@@ -271,6 +307,9 @@ export const INITIAL_VCARD_CONTENT: VCardContent = {
   qrName: '',
   primaryColor: '#6594FF',
   secondaryColor: '#FFFFFF',
+  bannerDataUrl: null,
+  bannerFileName: '',
+  bannerWave: DEFAULT_VCARD_BANNER_WAVE,
   fullName: '',
   avatarDataUrl: null,
   avatarFileName: '',
@@ -288,6 +327,11 @@ export const INITIAL_VCARD_CONTENT: VCardContent = {
   country: '',
   addressUrl: '',
   socials: [],
+  availabilityStatus: '',
+  workingHours: '',
+  skills: [],
+  showShareButton: true,
+  defaultOpenSection: 'none',
   splashDataUrl: null,
   splashFileName: '',
 };

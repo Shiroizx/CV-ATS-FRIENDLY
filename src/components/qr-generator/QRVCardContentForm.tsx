@@ -1,25 +1,30 @@
 import { useRef, useState } from 'react';
-import type { ChangeEvent, ReactNode } from 'react';
+import type { ChangeEvent, ReactNode, RefObject } from 'react';
 import {
   ArrowLeftRight,
-  ChevronDown,
   ChevronRight,
   Eye,
+  FlipHorizontal2,
   ImagePlus,
   Paintbrush,
   Pencil,
   Plus,
   Share2,
+  Shuffle,
   Sparkles,
   Trash2,
   Upload,
   User,
+  Waves,
 } from 'lucide-react';
 import {
   VCARD_COLOR_SCHEMES,
   INITIAL_VCARD_CONTENT,
+  DEFAULT_VCARD_BANNER_WAVE,
 } from '../../types/qrGenerator';
 import type {
+  VCardBannerWaveConfig,
+  VCardBannerWaveShape,
   VCardContent,
   VCardEmailLabel,
   VCardPhoneLabel,
@@ -32,6 +37,18 @@ import { validateLogoFileMeta } from '../../lib/qrHelpers';
 import { readFileAsDataUrl } from '../../lib/qrExport';
 import { showError } from '../../utils/swal';
 import QRImageEditorModal from './QRImageEditorModal';
+import QRVCardExtraSectionsEditor, {
+  QRVCardSectionCard as TopAccordionCard,
+} from './QRVCardExtraSectionsEditor';
+import { VCardBannerWaveSvg } from './VCardMobileView';
+
+const WAVE_SHAPES: readonly { id: VCardBannerWaveShape; label: string }[] = [
+  { id: 'smooth', label: 'Halus' },
+  { id: 'organic', label: 'Organik' },
+  { id: 'layered', label: 'Berlapis' },
+  { id: 'arch', label: 'Lengkung' },
+  { id: 'sharp', label: 'Tajam' },
+];
 
 interface QRVCardContentFormProps {
   content: VCardContent;
@@ -53,52 +70,6 @@ const EMAIL_LABELS: readonly VCardEmailLabel[] = [
   'Pribadi',
   'Lainnya',
 ];
-
-function TopAccordionCard({
-  icon,
-  title,
-  subtitle,
-  defaultOpen = true,
-  children,
-}: {
-  icon: ReactNode;
-  title: string;
-  subtitle: string;
-  defaultOpen?: boolean;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full px-5 sm:px-6 py-4 flex items-center justify-between gap-4 hover:bg-zinc-50/70 transition-colors text-left cursor-pointer"
-      >
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-            {icon}
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-base font-bold text-zinc-900">{title}</h3>
-            <p className="text-xs sm:text-sm text-zinc-500 truncate">{subtitle}</p>
-          </div>
-        </div>
-        <ChevronDown
-          className={`w-5 h-5 text-zinc-500 transition-transform duration-200 flex-shrink-0 ${
-            open ? 'rotate-180' : ''
-          }`}
-        />
-      </button>
-      {open && (
-        <div className="px-5 sm:px-6 pb-6 pt-4 border-t border-zinc-100 space-y-4">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function SubAccordion({
   title,
@@ -175,12 +146,120 @@ function ColorHexPicker({
 }
 
 type AboutSectionKey = 'personal' | 'contact' | 'company' | 'summary' | 'address';
+type VCardImageTarget = 'avatar' | 'banner' | 'splash';
 
 function createRowId(prefix: string): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   return `${prefix}-${Date.now()}`;
+}
+
+function VCardImagePickerField({
+  label,
+  hint,
+  emptyTitle,
+  imageUrl,
+  fileName,
+  fallbackFileName,
+  previewAlt,
+  previewClassName,
+  editTitle,
+  inputRef,
+  onFileChange,
+  onRemove,
+  onPreview,
+}: {
+  label: string;
+  hint?: string;
+  emptyTitle: string;
+  imageUrl: string | null;
+  fileName: string;
+  fallbackFileName: string;
+  previewAlt: string;
+  previewClassName: string;
+  editTitle: string;
+  inputRef: RefObject<HTMLInputElement | null>;
+  onFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onRemove: () => void;
+  onPreview?: () => void;
+}) {
+  return (
+    <div>
+      <div className="mb-2">
+        <label className="block text-sm font-bold text-zinc-900">{label}</label>
+        {hint && <p className="text-xs text-zinc-500 mt-0.5">{hint}</p>}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,.jfif"
+        onChange={onFileChange}
+        className="hidden"
+      />
+      {imageUrl ? (
+        <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src={imageUrl}
+              alt={previewAlt}
+              className={previewClassName}
+            />
+            <span className="text-sm font-semibold text-zinc-800 truncate">
+              {fileName || fallbackFileName}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {onPreview && (
+              <button
+                type="button"
+                title="Pratinjau layar selamat datang di ponsel"
+                onClick={onPreview}
+                className="p-2.5 rounded-xl border border-blue-300 bg-blue-50/50 text-blue-600 hover:bg-blue-100/70 transition-colors cursor-pointer"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              title={editTitle}
+              onClick={() => inputRef.current?.click()}
+              className="p-2.5 rounded-xl border border-zinc-200 text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Hapus
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="w-full rounded-xl border-2 border-dashed border-zinc-200 hover:border-blue-400 bg-zinc-50/50 hover:bg-blue-50/30 px-4 py-5 flex items-center justify-between gap-3 transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-3 text-left">
+            <div className="w-11 h-11 rounded-xl bg-white border border-zinc-200 text-blue-600 flex items-center justify-center flex-shrink-0">
+              <Upload className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-zinc-900">{emptyTitle}</p>
+              <p className="text-xs text-zinc-500">Ukuran maksimum: 5 MB</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-blue-600 flex-shrink-0">
+            Pilih File
+          </span>
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function QRVCardContentForm({
@@ -199,12 +278,13 @@ export default function QRVCardContentForm({
   const [showMoreSocials, setShowMoreSocials] = useState(false);
 
   const [pendingCrop, setPendingCrop] = useState<{
-    target: 'avatar' | 'splash';
+    target: VCardImageTarget;
     rawUrl: string;
     fileName: string;
   } | null>(null);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const splashInputRef = useRef<HTMLInputElement>(null);
 
   const toggleAbout = (key: AboutSectionKey) => {
@@ -240,12 +320,22 @@ export default function QRVCardContentForm({
           label: 'My Instagram',
         },
       ],
+      availabilityStatus: 'Terbuka untuk peluang & kolaborasi',
+      workingHours: 'Senin–Jumat, 09:00–17:00 WIB',
+      skills: [
+        'Full-Stack Development',
+        'UI/UX Design',
+        'React & TypeScript',
+        'System Architecture',
+      ],
+      showShareButton: true,
+      defaultOpenSection: 'summary',
     });
   };
 
   const handleUploadImage = async (
     e: ChangeEvent<HTMLInputElement>,
-    target: 'avatar' | 'splash'
+    target: VCardImageTarget
   ) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -392,6 +482,212 @@ export default function QRVCardContentForm({
             onChange={(hex) => onChange({ ...content, secondaryColor: hex })}
           />
         </div>
+
+        <div className="pt-2 border-t border-zinc-100 space-y-4">
+          <VCardImagePickerField
+            label="Gambar banner (opsional)"
+            hint="Kosongkan untuk memakai warna primer default sebagai latar belakang atas."
+            emptyTitle="Unggah gambar banner (jpg, png, svg)"
+            imageUrl={content.bannerDataUrl}
+            fileName={content.bannerFileName}
+            fallbackFileName="banner-vcard.webp"
+            previewAlt="Banner vCard"
+            previewClassName="w-20 h-14 rounded-xl object-cover border border-zinc-200 flex-shrink-0"
+            editTitle="Pilih gambar banner baru"
+            inputRef={bannerInputRef}
+            onFileChange={(e) => void handleUploadImage(e, 'banner')}
+            onRemove={() =>
+              onChange({
+                ...content,
+                bannerDataUrl: null,
+                bannerFileName: '',
+              })
+            }
+          />
+
+          {/* Shape Wave pada Banner */}
+          {(() => {
+            const wave: VCardBannerWaveConfig = {
+              ...DEFAULT_VCARD_BANNER_WAVE,
+              ...(content.bannerWave ?? {}),
+            };
+            const updateWave = (patch: Partial<VCardBannerWaveConfig>) => {
+              onChange({
+                ...content,
+                bannerWave: { ...wave, ...patch },
+              });
+            };
+
+            return (
+              <div className="pt-3 border-t border-zinc-100 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">
+                      Bentuk gelombang banner (Wave)
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Pilih tepi bawah banner lurus atau bergelombang artistik.
+                    </p>
+                  </div>
+                  <div className="inline-flex p-1 rounded-xl bg-zinc-100 border border-zinc-200/70 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => updateWave({ enabled: false })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        !wave.enabled
+                          ? 'bg-white text-zinc-900 shadow-2xs'
+                          : 'text-zinc-500 hover:text-zinc-800'
+                      }`}
+                    >
+                      Lurus
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateWave({ enabled: true })}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        wave.enabled
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'text-zinc-500 hover:text-zinc-800'
+                      }`}
+                    >
+                      <Waves className="w-3.5 h-3.5" />
+                      Wave
+                    </button>
+                  </div>
+                </div>
+
+                {wave.enabled && (
+                  <div className="rounded-xl bg-zinc-50 border border-zinc-200/80 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-600">
+                        Pilih Bentuk Wave
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateWave({
+                              seed: Math.floor(Math.random() * 9000) + 100,
+                            })
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-xs font-semibold text-zinc-700 transition-colors cursor-pointer"
+                        >
+                          <Shuffle className="w-3.5 h-3.5" />
+                          Acak Bentuk
+                        </button>
+                        <button
+                          type="button"
+                          title="Balik arah gelombang kiri-kanan"
+                          onClick={() => updateWave({ flipX: !wave.flipX })}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+                            wave.flipX
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100'
+                          }`}
+                        >
+                          <FlipHorizontal2 className="w-3.5 h-3.5" />
+                          Balik
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {WAVE_SHAPES.map((item) => {
+                        const active = wave.shape === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => updateWave({ shape: item.id })}
+                            className={`rounded-xl border overflow-hidden text-left transition-all cursor-pointer bg-white ${
+                              active
+                                ? 'border-blue-500 ring-2 ring-blue-500/20'
+                                : 'border-zinc-200 hover:border-zinc-300'
+                            }`}
+                          >
+                            <div
+                              className="relative h-10 w-full overflow-hidden border-b border-zinc-100"
+                              style={{
+                                backgroundColor: content.primaryColor || '#6594FF',
+                              }}
+                            >
+                              <VCardBannerWaveSvg
+                                wave={{ ...wave, shape: item.id, enabled: true }}
+                                fillColor={content.secondaryColor || '#FFFFFF'}
+                                className="absolute -bottom-px inset-x-0 w-full h-5"
+                              />
+                            </div>
+                            <p
+                              className={`px-1.5 py-1.5 text-[11px] font-semibold text-center truncate ${
+                                active ? 'text-blue-600' : 'text-zinc-700'
+                              }`}
+                            >
+                              {item.label}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label
+                            htmlFor="vcard-wave-complexity"
+                            className="text-xs font-semibold text-zinc-700"
+                          >
+                            Jumlah lengkungan
+                          </label>
+                          <span className="text-[11px] font-mono text-zinc-500">
+                            {wave.complexity} puncak
+                          </span>
+                        </div>
+                        <input
+                          id="vcard-wave-complexity"
+                          type="range"
+                          min={1}
+                          max={6}
+                          step={1}
+                          value={wave.complexity}
+                          onChange={(e) =>
+                            updateWave({ complexity: Number(e.target.value) })
+                          }
+                          className="w-full accent-blue-600 cursor-pointer"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label
+                            htmlFor="vcard-wave-height"
+                            className="text-xs font-semibold text-zinc-700"
+                          >
+                            Tinggi gelombang
+                          </label>
+                          <span className="text-[11px] font-mono text-zinc-500">
+                            {wave.height}%
+                          </span>
+                        </div>
+                        <input
+                          id="vcard-wave-height"
+                          type="range"
+                          min={24}
+                          max={74}
+                          step={2}
+                          value={wave.height}
+                          onChange={(e) =>
+                            updateWave({ height: Number(e.target.value) })
+                          }
+                          className="w-full accent-blue-600 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       </TopAccordionCard>
 
       {/* 2. Tentang Anda */}
@@ -430,75 +726,25 @@ export default function QRVCardContentForm({
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-zinc-900 mb-2">Gambar</label>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml,.jfif"
-              onChange={(e) => void handleUploadImage(e, 'avatar')}
-              className="hidden"
-            />
-            {content.avatarDataUrl ? (
-              <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    src={content.avatarDataUrl}
-                    alt="Foto profil"
-                    className="w-14 h-14 rounded-xl object-cover border border-zinc-200 flex-shrink-0"
-                  />
-                  <span className="text-sm font-semibold text-zinc-800 truncate">
-                    {content.avatarFileName || 'foto-profil.webp'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    type="button"
-                    title="Pilih gambar baru"
-                    onClick={() => avatarInputRef.current?.click()}
-                    className="p-2.5 rounded-xl border border-zinc-200 text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange({
-                        ...content,
-                        avatarDataUrl: null,
-                        avatarFileName: '',
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Hapus
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                className="w-full rounded-xl border-2 border-dashed border-zinc-200 hover:border-blue-400 bg-zinc-50/50 hover:bg-blue-50/30 px-4 py-5 flex items-center justify-between gap-3 transition-all cursor-pointer"
-              >
-                <div className="flex items-center gap-3 text-left">
-                  <div className="w-11 h-11 rounded-xl bg-white border border-zinc-200 text-blue-600 flex items-center justify-center flex-shrink-0">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-zinc-900">
-                      Unggah foto profil (jpg, png, svg)
-                    </p>
-                    <p className="text-xs text-zinc-500">Ukuran maksimum: 5 MB</p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-blue-600 flex-shrink-0">
-                  Pilih File
-                </span>
-              </button>
-            )}
-          </div>
+          <VCardImagePickerField
+            label="Gambar"
+            emptyTitle="Unggah foto profil (jpg, png, svg)"
+            imageUrl={content.avatarDataUrl}
+            fileName={content.avatarFileName}
+            fallbackFileName="foto-profil.webp"
+            previewAlt="Foto profil"
+            previewClassName="w-14 h-14 rounded-xl object-cover border border-zinc-200 flex-shrink-0"
+            editTitle="Pilih gambar baru"
+            inputRef={avatarInputRef}
+            onFileChange={(e) => void handleUploadImage(e, 'avatar')}
+            onRemove={() =>
+              onChange({
+                ...content,
+                avatarDataUrl: null,
+                avatarFileName: '',
+              })
+            }
+          />
         </SubAccordion>
 
         {/* 2b. Perincian kontak */}
@@ -976,6 +1222,13 @@ export default function QRVCardContentForm({
         </div>
       </TopAccordionCard>
 
+      {/* Bagian Tambahan (Tautan Pilihan, Keahlian & Ketersediaan, Tata Letak) */}
+      <QRVCardExtraSectionsEditor
+        content={content}
+        errors={errors}
+        onChange={onChange}
+      />
+
       {/* 4. Layar selamat datang */}
       <TopAccordionCard
         icon={<ImagePlus className="w-5 h-5" />}
@@ -983,83 +1236,26 @@ export default function QRVCardContentForm({
         subtitle="Menampilkan logo khusus saat halaman Anda dimuat"
         defaultOpen={false}
       >
-        <div>
-          <label className="block text-sm font-bold text-zinc-900 mb-2">Gambar</label>
-          <input
-            ref={splashInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml,.jfif"
-            onChange={(e) => void handleUploadImage(e, 'splash')}
-            className="hidden"
-          />
-          {content.splashDataUrl ? (
-            <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <img
-                  src={content.splashDataUrl}
-                  alt="Logo layar selamat datang"
-                  className="w-14 h-14 rounded-xl object-contain bg-zinc-50 border border-zinc-200 p-1 flex-shrink-0"
-                />
-                <span className="text-sm font-semibold text-zinc-800 truncate">
-                  {content.splashFileName || 'layar-selamat-datang.webp'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  type="button"
-                  title="Pratinjau layar selamat datang di ponsel"
-                  onClick={onPreviewSplash}
-                  className="p-2.5 rounded-xl border border-blue-300 bg-blue-50/50 text-blue-600 hover:bg-blue-100/70 transition-colors cursor-pointer"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  title="Pilih gambar layar selamat datang baru"
-                  onClick={() => splashInputRef.current?.click()}
-                  className="p-2.5 rounded-xl border border-zinc-200 text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange({
-                      ...content,
-                      splashDataUrl: null,
-                      splashFileName: '',
-                    });
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Hapus
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => splashInputRef.current?.click()}
-              className="w-full rounded-xl border-2 border-dashed border-zinc-200 hover:border-blue-400 bg-zinc-50/50 hover:bg-blue-50/30 px-4 py-5 flex items-center justify-between gap-3 transition-all cursor-pointer"
-            >
-              <div className="flex items-center gap-3 text-left">
-                <div className="w-11 h-11 rounded-xl bg-white border border-zinc-200 text-blue-600 flex items-center justify-center flex-shrink-0">
-                  <Upload className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-zinc-900">
-                    Unggah logo layar selamat datang (jpg, png, svg)
-                  </p>
-                  <p className="text-xs text-zinc-500">Ukuran maksimum: 5 MB</p>
-                </div>
-              </div>
-              <span className="text-xs font-semibold text-blue-600 flex-shrink-0">
-                Pilih File
-              </span>
-            </button>
-          )}
-        </div>
+        <VCardImagePickerField
+          label="Gambar"
+          emptyTitle="Unggah logo layar selamat datang (jpg, png, svg)"
+          imageUrl={content.splashDataUrl}
+          fileName={content.splashFileName}
+          fallbackFileName="layar-selamat-datang.webp"
+          previewAlt="Logo layar selamat datang"
+          previewClassName="w-14 h-14 rounded-xl object-contain bg-zinc-50 border border-zinc-200 p-1 flex-shrink-0"
+          editTitle="Pilih gambar layar selamat datang baru"
+          inputRef={splashInputRef}
+          onFileChange={(e) => void handleUploadImage(e, 'splash')}
+          onPreview={onPreviewSplash}
+          onRemove={() =>
+            onChange({
+              ...content,
+              splashDataUrl: null,
+              splashFileName: '',
+            })
+          }
+        />
       </TopAccordionCard>
 
       {/* 5. Nama kode QR */}
@@ -1093,6 +1289,14 @@ export default function QRVCardContentForm({
         <QRImageEditorModal
           imageUrl={pendingCrop.rawUrl}
           squareCrop={pendingCrop.target === 'avatar'}
+          aspectRatio={pendingCrop.target === 'banner' ? 4 / 3 : undefined}
+          maxChars={
+            pendingCrop.target === 'banner'
+              ? 34000
+              : pendingCrop.target === 'avatar'
+                ? 13000
+                : 12000
+          }
           onClose={() => setPendingCrop(null)}
           onSave={(processed) => {
             if (pendingCrop.target === 'avatar') {
@@ -1100,6 +1304,12 @@ export default function QRVCardContentForm({
                 ...content,
                 avatarDataUrl: processed,
                 avatarFileName: pendingCrop.fileName,
+              });
+            } else if (pendingCrop.target === 'banner') {
+              onChange({
+                ...content,
+                bannerDataUrl: processed,
+                bannerFileName: pendingCrop.fileName,
               });
             } else {
               onChange({

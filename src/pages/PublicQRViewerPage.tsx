@@ -144,7 +144,7 @@ export default function PublicQRViewerPage() {
     const footerLink = (
       <Link
         to="/"
-        className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-5 pb-1"
+        className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-2 pb-1"
       >
         <QrCode className="w-3.5 h-3.5" />
         Dibuat dengan FreeBuild CV
@@ -152,11 +152,14 @@ export default function PublicQRViewerPage() {
     );
 
     if (isDesktop) {
+      const hasBanner = Boolean(vcardContent.bannerDataUrl);
       return (
         <div className="min-h-screen bg-[#f7f9fc] flex flex-col items-center justify-center py-8 px-4 overflow-x-auto">
           <IPhone18ProMaxMockup
             exactSize
             statusBarBg={vcardContent.primaryColor}
+            overlayStatusBar={hasBanner}
+            statusBarLightText={hasBanner}
             bottomBg={vcardContent.secondaryColor}
             splashVisible={splashVisible}
             splashImageUrl={vcardContent.splashDataUrl}
@@ -167,6 +170,7 @@ export default function PublicQRViewerPage() {
               content={vcardContent}
               playSplashOnMount={false}
               compact={false}
+              hasTopMockupBar={hasBanner}
               footerNote={footerLink}
             />
           </IPhone18ProMaxMockup>

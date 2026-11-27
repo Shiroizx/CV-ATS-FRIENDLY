@@ -490,3 +490,263 @@ export function buildWatermarkTileDataUrl(isDarkSurface = false): string {
   const tileSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="150" viewBox="0 0 220 150"><g transform="rotate(-26 55 38)"><text x="55" y="34" text-anchor="middle" fill="${fillHex}" fill-opacity="${fillOpacity}" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="800" letter-spacing="1.4">FREEBUILD CV</text><text x="55" y="49" text-anchor="middle" fill="${fillHex}" fill-opacity="${fillOpacity}" font-family="system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="700" letter-spacing="1.2">PRATINJAU</text></g><g transform="rotate(-26 165 113)"><text x="165" y="109" text-anchor="middle" fill="${fillHex}" fill-opacity="${fillOpacity}" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="800" letter-spacing="1.4">FREEBUILD CV</text><text x="165" y="124" text-anchor="middle" fill="${fillHex}" fill-opacity="${fillOpacity}" font-family="system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="700" letter-spacing="1.2">PRATINJAU</text></g></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(tileSvg)}`;
 }
+
+export interface VCardImageCropLayout {
+  normalizedRot: number;
+  baseW: number;
+  baseH: number;
+  drawW: number;
+  drawH: number;
+  dx: number;
+  dy: number;
+  maxOffsetX: number;
+  maxOffsetY: number;
+  clampedOffsetX: number;
+  clampedOffsetY: number;
+}
+
+/**
+ * Menghitung ukuran render & batas pergeseran (pan/crop) yang identik untuk pratinjau CSS maupun kanvas.
+ */
+export function computeVCardImageCropLayout(params: {
+  srcW: number;
+  srcH: number;
+  frameW: number;
+  frameH: number;
+  zoom: number;
+  rotateDeg: number;
+  cover?: boolean;
+  offsetX?: number;
+  offsetY?: number;
+}): VCardImageCropLayout {
+  const safeSrcW = Math.max(1, params.srcW);
+  const safeSrcH = Math.max(1, params.srcH);
+  const safeFrameW = Math.max(1, params.frameW);
+  const safeFrameH = Math.max(1, params.frameH);
+
+  const normalizedRot = ((params.rotateDeg % 360) + 360) % 360;
+  const swapped = normalizedRot === 90 || normalizedRot === 270;
+  const baseW = swapped ? safeSrcH : safeSrcW;
+  const baseH = swapped ? safeSrcW : safeSrcH;
+
+  const baseScale =
+    params.cover !== false
+      ? Math.max(safeFrameW / baseW, safeFrameH / baseH)
+      : Math.min(safeFrameW / baseW, safeFrameH / baseH);
+  const finalScale = baseScale * Math.max(1, params.zoom);
+
+  const drawW = safeSrcW * finalScale;
+  const drawH = safeSrcH * finalScale;
+  const renderedW = baseW * finalScale;
+  const renderedH = baseH * finalScale;
+
+  const maxShiftX = Math.max(0, (renderedW - safeFrameW) / 2);
+  const maxShiftY = Math.max(0, (renderedH - safeFrameH) / 2);
+  const maxOffsetX = maxShiftX / safeFrameW;
+  const maxOffsetY = maxShiftY / safeFrameH;
+
+  const rawX = params.offsetX ?? 0;
+  const rawY = params.offsetY ?? 0;
+  const clampedOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, rawX));
+  const clampedOffsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, rawY));
+
+  return {
+    normalizedRot,
+    baseW,
+    baseH,
+    drawW,
+    drawH,
+    dx: clampedOffsetX * safeFrameW,
+    dy: clampedOffsetY * safeFrameH,
+    maxOffsetX,
+    maxOffsetY,
+    clampedOffsetX,
+    clampedOffsetY,
+  };
+}
+
+export interface VCardWavePoint {
+  x: number;
+  y: number;
+}
+
+export interface VCardWaveLayer {
+  d: string;
+  opacity: number;
+}
+
+function createSeededWaveRng(seed: number): () => number {
+  let state = (Math.floor(Math.abs(seed)) || 1) >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function clampWaveY(y: number): number {
+  return Math.max(2, Math.min(98, Math.round(y * 10) / 10));
+}
+
+function mirrorWavePoints(points: VCardWavePoint[]): VCardWavePoint[] {
+  return [...points]
+    .reverse()
+    .map((p) => ({ x: Math.round((400 - p.x) * 10) / 10, y: p.y }));
+}
+
+function buildClosedSmoothWavePath(points: VCardWavePoint[]): string {
+  if (points.length < 2) {
+    return 'M 0 100 L 400 100 Z';
+  }
+  const cmds: string[] = [`M ${points[0].x} ${points[0].y}`];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+
+    const cp1x = Math.round((p1.x + (p2.x - p0.x) / 6) * 10) / 10;
+    const cp1y = clampWaveY(p1.y + (p2.y - p0.y) / 6);
+    const cp2x = Math.round((p2.x - (p3.x - p1.x) / 6) * 10) / 10;
+    const cp2y = clampWaveY(p2.y - (p3.y - p1.y) / 6);
+    cmds.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`);
+  }
+  cmds.push('L 400 100 L 0 100 Z');
+  return cmds.join(' ');
+}
+
+function buildClosedPolygonWavePath(points: VCardWavePoint[]): string {
+  if (points.length < 2) {
+    return 'M 0 100 L 400 100 Z';
+  }
+  const cmds = [`M ${points[0].x} ${points[0].y}`];
+  for (let i = 1; i < points.length; i++) {
+    cmds.push(`L ${points[i].x} ${points[i].y}`);
+  }
+  cmds.push('L 400 100 L 0 100 Z');
+  return cmds.join(' ');
+}
+
+function sampleWavePoints(
+  shape: 'smooth' | 'organic' | 'layered' | 'arch' | 'sharp',
+  complexity: number,
+  amp: number,
+  seed: number,
+  heightScale = 1
+): VCardWavePoint[] {
+  const rng = createSeededWaveRng(seed);
+  const scaledAmp = Math.min(86, amp * heightScale);
+  const yBottom = 94;
+  const yTop = Math.max(8, yBottom - scaledAmp);
+
+  if (shape === 'arch') {
+    const peakCount = Math.max(2, Math.min(4, Math.round(complexity / 2) + 1));
+    const tiltBias = (rng() - 0.5) * scaledAmp * 0.45;
+    const pts: VCardWavePoint[] = [];
+    for (let i = 0; i <= peakCount; i++) {
+      const t = i / peakCount;
+      const x = Math.round(t * 400 * 10) / 10;
+      const archCurve = Math.sin(t * Math.PI);
+      const jitter = i === 0 || i === peakCount ? tiltBias * (i === 0 ? -1 : 1) : (rng() - 0.5) * 12;
+      const y = clampWaveY(yBottom - archCurve * scaledAmp * 0.85 - scaledAmp * 0.1 + jitter);
+      pts.push({ x, y });
+    }
+    return pts;
+  }
+
+  const steps = Math.max(2, Math.min(12, complexity * 2));
+  const phase = rng() > 0.5 ? 1 : -1;
+  const pts: VCardWavePoint[] = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const baseT = i / steps;
+    const xJitter =
+      i === 0 || i === steps || shape === 'smooth'
+        ? 0
+        : (rng() - 0.5) * (400 / steps) * (shape === 'sharp' ? 0.28 : 0.34);
+    const x = Math.round(Math.max(0, Math.min(400, baseT * 400 + xJitter)) * 10) / 10;
+
+    const isCrest = (i % 2 === 0 ? 1 : -1) * phase > 0;
+    const baseY = isCrest ? yTop + scaledAmp * 0.12 : yBottom - scaledAmp * 0.12;
+    const variance =
+      shape === 'smooth'
+        ? (rng() - 0.5) * scaledAmp * 0.18
+        : (rng() - 0.5) * scaledAmp * 0.48;
+    const y = clampWaveY(baseY + variance);
+    pts.push({ x, y });
+  }
+
+  return pts;
+}
+
+/**
+ * Menghasilkan path SVG gelombang deterministik (`viewBox="0 0 400 100"`) untuk pemisah bawah banner vCard.
+ */
+export function generateVCardBannerWavePaths(wave: {
+  shape: 'smooth' | 'organic' | 'layered' | 'arch' | 'sharp';
+  complexity: number;
+  height: number;
+  seed: number;
+  flipX?: boolean;
+}): {
+  backdropLayers: VCardWaveLayer[];
+  foregroundPath: string;
+} {
+  const complexity = Math.max(1, Math.min(6, Math.round(wave.complexity)));
+  const amp = Math.max(20, Math.min(78, wave.height));
+  const seed = Math.max(1, Math.round(wave.seed || 1));
+
+  const formatPath = (pts: VCardWavePoint[], usePolygon: boolean) => {
+    const ordered = wave.flipX ? mirrorWavePoints(pts) : pts;
+    return usePolygon
+      ? buildClosedPolygonWavePath(ordered)
+      : buildClosedSmoothWavePath(ordered);
+  };
+
+  if (wave.shape === 'layered') {
+    const backPts = sampleWavePoints('organic', complexity, amp, seed + 41, 1.08).map((p) => ({
+      x: p.x,
+      y: clampWaveY(p.y - 10),
+    }));
+    const midPts = sampleWavePoints('smooth', Math.max(2, complexity), amp, seed + 89, 0.92).map((p) => ({
+      x: p.x,
+      y: clampWaveY(p.y - 4),
+    }));
+    const frontPts = sampleWavePoints('smooth', complexity, amp, seed, 0.78);
+    return {
+      backdropLayers: [
+        { d: formatPath(backPts, false), opacity: 0.34 },
+        { d: formatPath(midPts, false), opacity: 0.55 },
+      ],
+      foregroundPath: formatPath(frontPts, false),
+    };
+  }
+
+  const pts = sampleWavePoints(wave.shape, complexity, amp, seed, 1);
+  return {
+    backdropLayers: [],
+    foregroundPath: formatPath(pts, wave.shape === 'sharp'),
+  };
+}
+
+/**
+ * Menormalkan daftar tag keahlian/layanan vCard: trim spasi, hapus kosong/duplikat,
+ * batas panjang 32 karakter per tag dan maksimal 12 tag.
+ */
+export function normalizeVCardSkills(skills: readonly string[] | undefined): string[] {
+  if (!Array.isArray(skills)) return [];
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const raw of skills) {
+    if (typeof raw !== 'string') continue;
+    const trimmed = raw.trim().slice(0, 32);
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(trimmed);
+    if (normalized.length >= 12) break;
+  }
+
+  return normalized;
+}

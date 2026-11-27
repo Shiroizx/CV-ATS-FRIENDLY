@@ -8,6 +8,10 @@ interface IPhone18ProMaxMockupProps {
   exactSize?: boolean;
   /** Warna latar belakang status bar atas (mengikuti hero vCard jika aktif). */
   statusBarBg?: string;
+  /** Menampilkan status bar melayang transparan di atas banner hero penuh layar. */
+  overlayStatusBar?: boolean;
+  /** Memaksa ikon status bar berwarna putih kontras saat berada di atas gambar banner. */
+  statusBarLightText?: boolean;
   /** Warna latar konten utama untuk menyesuaikan kontras Home Indicator di bawah. */
   bottomBg?: string;
   /** Data URL wallpaper/watermark opsional di belakang konten layar. */
@@ -26,6 +30,8 @@ interface IPhone18ProMaxMockupProps {
 export default function IPhone18ProMaxMockup({
   exactSize = true,
   statusBarBg,
+  overlayStatusBar = false,
+  statusBarLightText = false,
   bottomBg = '#FFFFFF',
   backgroundOverlay,
   splashVisible = false,
@@ -34,11 +40,15 @@ export default function IPhone18ProMaxMockup({
   onDismissSplash,
   children,
 }: IPhone18ProMaxMockupProps) {
+  const isOverlayActive = Boolean(overlayStatusBar && !splashVisible);
   const effectiveStatusBg =
     splashVisible ? '#FFFFFF' : statusBarBg || undefined;
-  const isLightStatus = effectiveStatusBg
-    ? calculateRelativeLuminance(effectiveStatusBg) > 0.55
-    : true;
+  const isLightStatus =
+    isOverlayActive && statusBarLightText
+      ? false
+      : effectiveStatusBg
+        ? calculateRelativeLuminance(effectiveStatusBg) > 0.55
+        : true;
   const isLightBottom = calculateRelativeLuminance(bottomBg) > 0.55;
 
   const bezelPadding = exactSize ? '10px' : '9px';
@@ -117,14 +127,20 @@ export default function IPhone18ProMaxMockup({
 
         {/* Status Bar & Dynamic Island iPhone 18 Pro Max (82×32 px ringkas) */}
         <div
-          className={`relative z-30 flex items-center justify-between transition-colors duration-300 flex-shrink-0 ${
+          className={`${
+            isOverlayActive ? 'absolute top-0 inset-x-0 pointer-events-none' : 'relative flex-shrink-0'
+          } z-30 flex items-center justify-between transition-colors duration-300 ${
             isLightStatus ? 'text-zinc-900' : 'text-white'
           }`}
           style={{
             height: exactSize ? '56px' : '44px',
             paddingLeft: exactSize ? '32px' : '22px',
             paddingRight: exactSize ? '28px' : '20px',
-            backgroundColor: splashVisible ? '#FFFFFF' : statusBarBg,
+            backgroundColor: splashVisible
+              ? '#FFFFFF'
+              : isOverlayActive
+                ? 'transparent'
+                : statusBarBg,
           }}
         >
           <span

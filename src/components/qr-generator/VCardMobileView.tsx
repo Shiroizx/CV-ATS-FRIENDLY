@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
+  Award,
   Briefcase,
+  Check,
   ChevronDown,
+  Clock,
   ExternalLink,
   FileText,
   Globe,
@@ -10,19 +13,64 @@ import {
   MapPin,
   Phone,
   PlusCircle,
+  Share2,
   ThumbsUp,
   User,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import type { VCardContent } from '../../types/qrGenerator';
+import { DEFAULT_VCARD_BANNER_WAVE } from '../../types/qrGenerator';
+import type {
+  VCardAccordionSectionKey,
+  VCardBannerWaveConfig,
+  VCardContent,
+  VCardDefaultOpenMode,
+} from '../../types/qrGenerator';
 import {
   calculateRelativeLuminance,
   downloadVCardFile,
   extractDisplayHost,
   formatVCardManualAddress,
+  generateVCardBannerWavePaths,
+  normalizeVCardSkills,
   sanitizeExternalUrl,
 } from '../../lib/qrHelpers';
 import { getSocialPlatformMeta } from '../../lib/qrPresets';
+
+/**
+ * Merender SVG gelombang pemisah bawah banner vCard berdasarkan konfigurasi bentuk & seed acak.
+ */
+export function VCardBannerWaveSvg({
+  wave,
+  fillColor,
+  className = '',
+  style,
+}: {
+  wave: VCardBannerWaveConfig;
+  fillColor: string;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const { backdropLayers, foregroundPath } = generateVCardBannerWavePaths(wave);
+  return (
+    <svg
+      viewBox="0 0 400 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      className={className}
+      style={style}
+    >
+      {backdropLayers.map((layer, idx) => (
+        <path
+          key={idx}
+          d={layer.d}
+          fill={fillColor}
+          fillOpacity={layer.opacity}
+        />
+      ))}
+      <path d={foregroundPath} fill={fillColor} />
+    </svg>
+  );
+}
 
 interface VCardSplashOverlayProps {
   visible: boolean;
@@ -129,10 +177,11 @@ interface VCardMobileViewProps {
   content: VCardContent;
   playSplashOnMount?: boolean;
   compact?: boolean;
+  hasTopMockupBar?: boolean;
   footerNote?: ReactNode;
 }
 
-type VCardCardSection = 'contact' | 'company' | 'summary' | 'social';
+type VCardCardSection = VCardAccordionSectionKey;
 
 /**
  * Tampilan kartu nama digital interaktif vCard (digunakan di pratinjau ponsel & halaman scan /q/:shortCode).
@@ -141,9 +190,14 @@ export default function VCardMobileView({
   content,
   playSplashOnMount = false,
   compact = true,
+  hasTopMockupBar = false,
   footerNote,
 }: VCardMobileViewProps) {
-  const [openSection, setOpenSection] = useState<VCardCardSection | null>(null);
+  const [sectionOverride, setSectionOverride] = useState<{
+    defaultKey: VCardDefaultOpenMode;
+    section: VCardCardSection | null;
+  } | null>(null);
+  const [copiedShare, setCopiedShare] = useState(false);
   const [showingSplash, setShowingSplash] = useState(
     Boolean(playSplashOnMount && content.splashDataUrl)
   );
@@ -161,9 +215,19 @@ export default function VCardMobileView({
     ? content.secondaryColor
     : '#FFFFFF';
 
-  const isLightHero = calculateRelativeLuminance(primaryBg) > 0.55;
-  const heroTextClass = isLightHero ? 'text-zinc-900' : 'text-white';
-  const heroSubClass = isLightHero ? 'text-zinc-700' : 'text-white/85';
+  const hasBanner = Boolean(content.bannerDataUrl);
+  const isLightHero = !hasBanner && calculateRelativeLuminance(primaryBg) > 0.55;
+  const isLightSecondary = calculateRelativeLuminance(secondaryBg) > 0.55;
+  const heroTextClass = hasBanner
+    ? 'text-white drop-shadow-xs'
+    : isLightHero
+      ? 'text-zinc-900'
+      : 'text-white';
+  const heroSubClass = hasBanner
+    ? 'text-white/90 drop-shadow-xs'
+    : isLightHero
+      ? 'text-zinc-700'
+      : 'text-white/85';
 
   const filledPhones = content.phones.filter((p) => p.number.trim().length > 0);
   const filledEmails = content.emails.filter((e) => e.email.trim().length > 0);
@@ -174,15 +238,81 @@ export default function VCardMobileView({
       : '#';
   const websiteHref = content.website.trim() ? sanitizeExternalUrl(content.website) : '#';
   const filledSocials = content.socials.filter((s) => s.url.trim().length > 0);
+  const normalizedSkills = normalizeVCardSkills(content.skills);
+  const availabilityStatus = (content.availabilityStatus ?? '').trim();
+  const workingHours = (content.workingHours ?? '').trim();
+  const showShareButton = content.showShareButton !== false;
+
+  const defaultMode: VCardDefaultOpenMode = content.defaultOpenSection ?? 'none';
+  const defaultOpen: VCardCardSection | null =
+    defaultMode !== 'none' ? defaultMode : null;
+  const openSection: VCardCardSection | null =
+    sectionOverride && sectionOverride.defaultKey === defaultMode
+      ? sectionOverride.section
+      : defaultOpen;
 
   const toggleSection = (key: VCardCardSection) => {
-    setOpenSection((prev) => (prev === key ? null : key));
+    setSectionOverride({
+      defaultKey: defaultMode,
+      section: openSection === key ? null : key,
+    });
   };
+
+  const handleShareCard = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const shareTitle = content.fullName.trim() || 'Kartu Nama Digital';
+    if (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.share === 'function' &&
+      shareUrl
+    ) {
+      try {
+        await navigator.share({ title: shareTitle, url: shareUrl });
+        return;
+      } catch {
+        // Pengguna membatalkan dialog share atau browser tidak mendukung -> salin tautan
+      }
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard && shareUrl) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopiedShare(true);
+        setTimeout(() => setCopiedShare(false), 2000);
+      } catch {
+        // Abaikan jika izin clipboard dibatasi browser
+      }
+    }
+  };
+
+  const bannerWave: VCardBannerWaveConfig = {
+    ...DEFAULT_VCARD_BANNER_WAVE,
+    ...(content.bannerWave ?? {}),
+  };
+  const hasWave = bannerWave.enabled;
+  const waveHeightPx = compact
+    ? Math.round(28 + bannerWave.height * 0.42)
+    : Math.round(38 + bannerWave.height * 0.62);
+
+  const heroPaddingClass = hasTopMockupBar
+    ? compact
+      ? hasWave
+        ? 'pt-[50px] pb-[54px]'
+        : 'pt-[52px] pb-8'
+      : hasWave
+        ? 'pt-[78px] pb-[72px]'
+        : 'pt-[82px] pb-11'
+    : compact
+      ? hasWave
+        ? 'pt-6 pb-14'
+        : 'pt-6 pb-10'
+      : hasWave
+        ? 'pt-10 pb-[74px]'
+        : 'pt-10 pb-12';
 
   return (
     <div
-      className="relative flex-1 flex flex-col overflow-y-auto"
-      style={{ backgroundColor: secondaryBg }}
+      className="relative flex-1 min-h-0 flex flex-col overflow-y-auto [&::-webkit-scrollbar]:hidden"
+      style={{ backgroundColor: secondaryBg, scrollbarWidth: 'none' }}
     >
       {/* Overlay Layar Selamat Datang (Splash Screen saat dibuka dari scan publik) */}
       {playSplashOnMount && (
@@ -197,19 +327,33 @@ export default function VCardMobileView({
 
       {/* Bagian Hero Primer */}
       <div
-        className={`relative px-5 ${compact ? 'pt-6 pb-10' : 'pt-10 pb-12'} text-center flex flex-col items-center`}
+        className={`relative flex-shrink-0 overflow-hidden px-5 ${heroPaddingClass} text-center flex flex-col items-center`}
         style={{ backgroundColor: primaryBg }}
       >
+        {hasBanner && content.bannerDataUrl && (
+          <>
+            <img
+              src={content.bannerDataUrl}
+              alt="Banner vCard"
+              className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/65 pointer-events-none"
+            />
+          </>
+        )}
+
         <motion.div
           initial={compact ? false : { opacity: 0, scale: 0.92, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col items-center w-full"
+          className="relative z-10 flex flex-col items-center w-full"
         >
           <div
             className={`${
-              compact ? 'w-20 h-20' : 'w-24 h-24'
-            } rounded-full border-[3.5px] border-white shadow-lg bg-white/25 overflow-hidden flex items-center justify-center mb-3`}
+              compact ? 'w-[68px] h-[68px] mb-2.5' : 'w-24 h-24 mb-3'
+            } rounded-full border-[3.5px] border-white shadow-lg bg-white/25 overflow-hidden flex items-center justify-center`}
           >
             {content.avatarDataUrl ? (
               <img
@@ -224,7 +368,7 @@ export default function VCardMobileView({
 
           <h3
             className={`${
-              compact ? 'text-base' : 'text-xl'
+              compact ? 'text-[15px]' : 'text-xl'
             } font-extrabold tracking-tight leading-snug max-w-full break-words ${heroTextClass}`}
           >
             {content.fullName.trim() || 'Nama Lengkap Anda'}
@@ -238,15 +382,39 @@ export default function VCardMobileView({
             </p>
           )}
 
+          {availabilityStatus && (
+            <span
+              className={`mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-semibold border ${
+                hasBanner
+                  ? 'bg-black/35 border-white/25 text-white backdrop-blur-xs'
+                  : isLightHero
+                    ? 'bg-black/5 border-black/10 text-zinc-800'
+                    : 'bg-white/15 border-white/20 text-white'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+              <span>{availabilityStatus}</span>
+            </span>
+          )}
+
           <button
             type="button"
             onClick={() => downloadVCardFile(content)}
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white text-zinc-900 text-xs font-bold shadow-md hover:shadow-lg hover:bg-zinc-50 active:scale-95 transition-all cursor-pointer"
+            className={`${compact ? 'mt-3' : 'mt-4'} inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white text-zinc-900 text-xs font-bold shadow-md hover:shadow-lg hover:bg-zinc-50 active:scale-95 transition-all cursor-pointer`}
           >
             <PlusCircle className="w-3.5 h-3.5 text-zinc-700" />
             <span>Tambahkan kontak</span>
           </button>
         </motion.div>
+
+        {hasWave && (
+          <VCardBannerWaveSvg
+            wave={bannerWave}
+            fillColor={secondaryBg}
+            className="absolute -bottom-px inset-x-0 w-full z-[5] pointer-events-none select-none"
+            style={{ height: `${waveHeightPx}px` }}
+          />
+        )}
       </div>
 
       {/* Kartu Informasi Akordeon */}
@@ -254,7 +422,7 @@ export default function VCardMobileView({
         initial={compact ? false : { opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        className="px-3.5 pb-5 -mt-5 relative z-10 space-y-2.5 flex-1 flex flex-col"
+        className={`px-3.5 ${compact ? 'pb-5' : 'pb-6'} ${hasWave ? '-mt-2' : '-mt-5'} relative z-10 space-y-2 flex-1 flex-shrink-0 flex flex-col`}
       >
         {/* 1. Kontak */}
         <VCardAccordionCard
@@ -440,6 +608,85 @@ export default function VCardMobileView({
             )}
           </div>
         </VCardAccordionCard>
+
+        {/* Keahlian & Layanan */}
+        {normalizedSkills.length > 0 && (
+          <div
+            className={`rounded-xl border px-3.5 py-3 space-y-2 ${
+              isLightSecondary
+                ? 'bg-zinc-50/90 border-zinc-200/80'
+                : 'bg-white/10 border-white/15'
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <Award
+                className={`w-3.5 h-3.5 ${
+                  isLightSecondary ? 'text-blue-600' : 'text-blue-300'
+                }`}
+              />
+              <span
+                className={`text-[11px] font-bold uppercase tracking-wider ${
+                  isLightSecondary ? 'text-zinc-600' : 'text-zinc-200'
+                }`}
+              >
+                Keahlian & Layanan
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {normalizedSkills.map((skill) => (
+                <span
+                  key={skill}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                    isLightSecondary
+                      ? 'bg-white border-zinc-200 text-zinc-700'
+                      : 'bg-white/10 border-white/15 text-white'
+                  }`}
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Jam Operasional */}
+        {workingHours && (
+          <div
+            className={`flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-medium ${
+              isLightSecondary
+                ? 'bg-zinc-50/80 border-zinc-200/70 text-zinc-600'
+                : 'bg-white/10 border-white/15 text-zinc-200'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 flex-shrink-0 opacity-80" />
+            <span className="truncate">{workingHours}</span>
+          </div>
+        )}
+
+        {/* Tombol Bagikan Kartu Nama */}
+        {showShareButton && (
+          <button
+            type="button"
+            onClick={() => void handleShareCard()}
+            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+              isLightSecondary
+                ? 'border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700'
+                : 'border-white/20 bg-white/10 hover:bg-white/15 text-white'
+            }`}
+          >
+            {copiedShare ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Tautan kartu disalin!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Bagikan Kartu Nama</span>
+              </>
+            )}
+          </button>
+        )}
 
         {footerNote && <div className="mt-auto text-center">{footerNote}</div>}
       </motion.div>

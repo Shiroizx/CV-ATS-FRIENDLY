@@ -12,6 +12,9 @@ import {
   checkQRScannability,
   validateLogoFileMeta,
   generateShortCode,
+  computeVCardImageCropLayout,
+  generateVCardBannerWavePaths,
+  normalizeVCardSkills,
 } from '../src/lib/qrHelpers.ts';
 import {
   DEFAULT_QR_STYLE,
@@ -151,4 +154,110 @@ test('generateVCardVcfString produces standard vCard 3.0 payload', () => {
   assert.match(vcf, /URL:https:\/\/adlzil\.engineer/);
   assert.match(vcf, /ADR;TYPE=WORK:;;Muncang;Jakarta Utara;DKI Jakarta;14270;Indonesia/);
   assert.match(vcf, /END:VCARD$/);
+});
+
+test('computeVCardImageCropLayout keeps preview and canvas crop panning invariant across sizes', () => {
+  const widePreview = computeVCardImageCropLayout({
+    srcW: 1600,
+    srcH: 900,
+    frameW: 264,
+    frameH: 165,
+    zoom: 1,
+    rotateDeg: 0,
+    offsetX: 0.5,
+  });
+  const wideCanvas = computeVCardImageCropLayout({
+    srcW: 1600,
+    srcH: 900,
+    frameW: 440,
+    frameH: 275,
+    zoom: 1,
+    rotateDeg: 0,
+    offsetX: widePreview.clampedOffsetX,
+  });
+  assert.ok(widePreview.maxOffsetX > 0.05);
+  assert.equal(widePreview.maxOffsetY, 0);
+  assert.ok(Math.abs(widePreview.clampedOffsetX - wideCanvas.clampedOffsetX) < 1e-6);
+
+  const squareZoomed = computeVCardImageCropLayout({
+    srcW: 1200,
+    srcH: 1200,
+    frameW: 220,
+    frameH: 220,
+    zoom: 2,
+    rotateDeg: 90,
+    offsetX: -0.25,
+    offsetY: 2.5,
+  });
+  assert.ok(Math.abs(squareZoomed.maxOffsetX - 0.5) < 1e-6);
+  assert.equal(squareZoomed.clampedOffsetX, -0.25);
+  assert.ok(Math.abs(squareZoomed.clampedOffsetY - 0.5) < 1e-6);
+  assert.equal(squareZoomed.normalizedRot, 90);
+});
+
+test('generateVCardBannerWavePaths is deterministic per seed and supports all shapes & mirroring', () => {
+  const shapes = ['smooth', 'organic', 'layered', 'arch', 'sharp'] as const;
+  for (const shape of shapes) {
+    const a = generateVCardBannerWavePaths({
+      shape,
+      complexity: 3,
+      height: 48,
+      seed: 777,
+    });
+    const b = generateVCardBannerWavePaths({
+      shape,
+      complexity: 3,
+      height: 48,
+      seed: 777,
+    });
+    assert.deepEqual(a, b);
+    assert.match(a.foregroundPath, /^M 0 /);
+    assert.match(a.foregroundPath, /L 400 100 L 0 100 Z$/);
+    if (shape === 'layered') {
+      assert.equal(a.backdropLayers.length, 2);
+    } else {
+      assert.equal(a.backdropLayers.length, 0);
+    }
+  }
+
+  const seedA = generateVCardBannerWavePaths({
+    shape: 'organic',
+    complexity: 4,
+    height: 54,
+    seed: 111,
+  });
+  const seedB = generateVCardBannerWavePaths({
+    shape: 'organic',
+    complexity: 4,
+    height: 54,
+    seed: 999,
+  });
+  const flippedA = generateVCardBannerWavePaths({
+    shape: 'organic',
+    complexity: 4,
+    height: 54,
+    seed: 111,
+    flipX: true,
+  });
+  assert.notEqual(seedA.foregroundPath, seedB.foregroundPath);
+  assert.notEqual(seedA.foregroundPath, flippedA.foregroundPath);
+});
+
+test('normalizeVCardSkills trims, deduplicates case-insensitively, and enforces caps', () => {
+  const result = normalizeVCardSkills([
+    '  React ',
+    'react',
+    '',
+    '   ',
+    'TypeScript',
+    'VeryLongSkillNameExceedingThirtyTwoCharsHere',
+    'UI/UX',
+  ]);
+  assert.deepEqual(result, [
+    'React',
+    'TypeScript',
+    'VeryLongSkillNameExceedingThirty',
+    'UI/UX',
+  ]);
+  assert.equal(normalizeVCardSkills(undefined).length, 0);
 });

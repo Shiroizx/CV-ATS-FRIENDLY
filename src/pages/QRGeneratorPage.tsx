@@ -91,6 +91,7 @@ function coerceContentData(
           ? vc.emails
           : INITIAL_VCARD_CONTENT.emails,
       socials: Array.isArray(vc.socials) ? vc.socials : [],
+      skills: Array.isArray(vc.skills) ? vc.skills : [],
     };
   }
   const u = (raw || {}) as Partial<UrlContent>;
