@@ -147,6 +147,21 @@ export const showLoading = (title = 'Memproses...', text?: string) => {
     });
 };
 
+// Batas Kredit Download Tercapai
+export const showDownloadLimitReached = (count: number, max: number) => {
+    return Swal.fire({
+        icon: 'error',
+        title: 'Batas Download Tercapai',
+        html: `Anda sudah menggunakan <strong>${count}/${max}</strong> kredit download. Batas maksimal akun Anda telah tercapai.`,
+        confirmButtonText: 'Mengerti',
+        ...SwalConfig,
+        customClass: {
+            ...SwalConfig.customClass,
+            confirmButton: `${SwalConfig.customClass.confirmButton} bg-red-600 hover:bg-red-700 text-white`,
+        }
+    });
+};
+
 // Toast (small notification)
 export const showToast = (
     icon: 'success' | 'error' | 'warning' | 'info',

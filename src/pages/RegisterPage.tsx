@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, ShieldAlert, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import { supabase } from "../lib/supabase";
@@ -20,8 +20,16 @@ export default function RegisterPage() {
     const [honeypot, setHoneypot] = useState("");
     const lastSubmitRef = useRef(0);
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuth();
     const isRegistering = useRef(false);
+
+    const rawFrom = (location.state as { from?: string } | null)?.from;
+    const redirectTo =
+        typeof rawFrom === "string" && rawFrom.startsWith("/") && !rawFrom.startsWith("//")
+            ? rawFrom
+            : "";
+    const isFromQrFeature = redirectTo.startsWith("/qr-generator") || redirectTo.startsWith("/my-qr-codes");
 
     // Lockout countdown timer
     useEffect(() => {
@@ -47,9 +55,9 @@ export default function RegisterPage() {
     useEffect(() => {
         document.title = "Daftar Akun - FreeBuild CV";
         if (user && !isRegistering.current) {
-            navigate("/builder");
+            navigate(redirectTo || "/builder", { replace: true });
         }
-    }, [user, navigate]);
+    }, [user, navigate, redirectTo]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -189,7 +197,7 @@ export default function RegisterPage() {
                 },
                 buttonsStyling: false,
             }).then(() => {
-                navigate("/login");
+                navigate("/login", { state: redirectTo ? { from: redirectTo } : undefined });
             });
             setLoading(false);
         }
@@ -248,6 +256,12 @@ export default function RegisterPage() {
                     >
                         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 mb-2">Buat Akun</h1>
                         <p className="text-zinc-500 mb-8">Daftar secara gratis dan mulai membuat CV Anda.</p>
+
+                        {isFromQrFeature && (
+                            <div className="mb-5 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-900">
+                                Silakan daftar atau login terlebih dahulu untuk mengunduh Kode QR Anda.
+                            </div>
+                        )}
 
                         <form onSubmit={handleRegister} autoComplete="off" className="space-y-4">
                             {/* Honeypot */}
@@ -396,7 +410,11 @@ export default function RegisterPage() {
 
                         <p className="mt-8 text-center text-sm text-zinc-500">
                             Sudah punya akun?{" "}
-                            <Link to="/login" className="font-medium text-zinc-900 hover:underline underline-offset-4 transition-all">
+                            <Link
+                                to="/login"
+                                state={redirectTo ? { from: redirectTo } : undefined}
+                                className="font-medium text-zinc-900 hover:underline underline-offset-4 transition-all"
+                            >
                                 Masuk di sini
                             </Link>
                         </p>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Home, FileText, Heart, ScrollText, HelpCircle, LogOut, User, LogIn, ChevronDown, Settings, ShieldAlert, Download } from 'lucide-react';
+import { Menu, X, Home, FileText, Heart, ScrollText, HelpCircle, LogOut, User, LogIn, ChevronDown, Settings, ShieldAlert, Download, QrCode } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getRemainingDownloads } from '../lib/downloadCredit';
 import Swal from 'sweetalert2';
@@ -57,7 +58,9 @@ export default function Navbar() {
         { id: 'changelog', label: 'Changelog', icon: ScrollText },
     ];
 
-    const routeLinks: any[] = [];
+    const routeLinks: { to: string; label: string; icon: LucideIcon }[] = [
+        { to: '/qr-generator', label: 'QR Generator', icon: QrCode },
+    ];
     const handleSignOut = async () => {
         setIsMenuOpen(false);
         const result = await Swal.fire({
@@ -88,7 +91,7 @@ export default function Navbar() {
         }
     };
 
-    if (location.pathname === '/login' || location.pathname === '/register') {
+    if (location.pathname === '/login' || location.pathname === '/register' || location.pathname.startsWith('/q/')) {
         return null;
     }
 
@@ -223,6 +226,16 @@ export default function Navbar() {
                                                 <button
                                                     onClick={() => {
                                                         setIsProfileOpen(false);
+                                                        navigate('/my-qr-codes');
+                                                    }}
+                                                    className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 rounded-md transition-colors"
+                                                >
+                                                    <QrCode className="w-4 h-4" />
+                                                    <span className="font-medium">Riwayat QR Code</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setIsProfileOpen(false);
                                                         navigate('/settings');
                                                     }}
                                                     className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 rounded-md transition-colors"
@@ -352,6 +365,16 @@ export default function Navbar() {
                                         >
                                             <FileText className="w-5 h-5" />
                                             <span>Riwayat CV</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                navigate('/my-qr-codes');
+                                            }}
+                                            className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 text-left w-full"
+                                        >
+                                            <QrCode className="w-5 h-5" />
+                                            <span>Riwayat QR Code</span>
                                         </button>
                                         <button
                                             onClick={() => {

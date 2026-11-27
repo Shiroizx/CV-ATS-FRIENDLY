@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, ShieldAlert, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import { supabase } from "../lib/supabase";
@@ -16,7 +16,15 @@ export default function LoginPage() {
     const [honeypot, setHoneypot] = useState("");
     const lastSubmitRef = useRef(0);
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuth();
+
+    const rawFrom = (location.state as { from?: string } | null)?.from;
+    const redirectTo =
+        typeof rawFrom === "string" && rawFrom.startsWith("/") && !rawFrom.startsWith("//")
+            ? rawFrom
+            : "/";
+    const isFromQrFeature = redirectTo.startsWith("/qr-generator") || redirectTo.startsWith("/my-qr-codes");
 
     // Lockout countdown timer
     useEffect(() => {
@@ -39,9 +47,9 @@ export default function LoginPage() {
     useEffect(() => {
         document.title = "Login - FreeBuild CV";
         if (user) {
-            navigate("/");
+            navigate(redirectTo, { replace: true });
         }
-    }, [user, navigate]);
+    }, [user, navigate, redirectTo]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -103,7 +111,7 @@ export default function LoginPage() {
                 }
 
                 finalEmail = data;
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error("Error fetching email by username:", err);
                 rl.record();
                 Swal.fire({
@@ -150,7 +158,7 @@ export default function LoginPage() {
                 showConfirmButton: false,
                 customClass: { popup: 'rounded-2xl' }
             });
-            navigate("/");
+            navigate(redirectTo, { replace: true });
         }
     };
 
@@ -207,6 +215,12 @@ export default function LoginPage() {
                     >
                         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 mb-2">Selamat Datang</h1>
                         <p className="text-zinc-500 mb-8">Masuk ke akun Anda untuk melanjutkan.</p>
+
+                        {isFromQrFeature && (
+                            <div className="mb-6 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-900">
+                                Silakan login atau daftar terlebih dahulu untuk mengunduh Kode QR Anda.
+                            </div>
+                        )}
 
                         <form onSubmit={handleLogin} autoComplete="off" className="space-y-5">
                             {/* Honeypot */}
@@ -301,7 +315,11 @@ export default function LoginPage() {
 
                         <p className="mt-8 text-center text-sm text-zinc-500">
                             Belum punya akun?{' '}
-                            <Link to="/register" className="font-medium text-zinc-900 hover:underline underline-offset-4 transition-all">
+                            <Link
+                                to="/register"
+                                state={{ from: redirectTo }}
+                                className="font-medium text-zinc-900 hover:underline underline-offset-4 transition-all"
+                            >
                                 Daftar sekarang
                             </Link>
                         </p>

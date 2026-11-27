@@ -71,13 +71,16 @@ export function getDeviceFingerprint(): string {
  */
 const IP_CACHE_KEY = "dl_client_ip";
 
-async function fetchIPFromAPI(url: string, extractor: (data: any) => string): Promise<string | null> {
+async function fetchIPFromAPI(
+    url: string,
+    extractor: (data: Record<string, unknown>) => unknown
+): Promise<string | null> {
     try {
         const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
         if (!res.ok) return null;
-        const data = await res.json();
+        const data = (await res.json()) as Record<string, unknown>;
         const ip = extractor(data);
-        return ip && ip !== "" ? ip : null;
+        return typeof ip === "string" && ip !== "" ? ip : null;
     } catch {
         return null;
     }
@@ -91,7 +94,7 @@ export async function getClientIP(): Promise<string> {
     } catch { /* sessionStorage may not be available */ }
 
     // 2. Try multiple APIs in sequence
-    const apis: Array<{ url: string; extractor: (d: any) => string }> = [
+    const apis: Array<{ url: string; extractor: (d: Record<string, unknown>) => unknown }> = [
         { url: "https://api.ipify.org?format=json", extractor: (d) => d.ip },
         { url: "https://ipapi.co/json/", extractor: (d) => d.ip },
         { url: "https://api.db-ip.com/v2/free/self", extractor: (d) => d.ipAddress },
@@ -185,14 +188,16 @@ export async function checkAndRecordUserDownload(
     return { allowed: true, count: currentCount + 1, max: limits.user };
 }
 
-/**
- * Get remaining downloads for display purposes.
- */
-export async function getRemainingDownloads(isLoggedIn: boolean): Promise<{
+export interface DownloadCreditInfo {
     remaining: number;
     max: number;
     count: number;
-}> {
+}
+
+/**
+ * Get remaining downloads for display purposes.
+ */
+export async function getRemainingDownloads(isLoggedIn: boolean): Promise<DownloadCreditInfo> {
     const limits = await getDownloadLimits();
 
     if (isLoggedIn) {

@@ -8,26 +8,32 @@ const templateLabels: Record<string, string> = {
     ats_builder: "CV ATS Builder",
     creative_management: "Creative Management",
     portfolio: "Portfolio",
+    qr_code: "QR Code Generator",
 };
 
 export default function DownloadHistoryPage() {
     const { user } = useAuth();
     const [history, setHistory] = useState<DownloadHistoryItem[]>([]);
     const [creditInfo, setCreditInfo] = useState<{ count: number; max: number; remaining: number } | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(Boolean(user));
 
     useEffect(() => {
         document.title = "Riwayat Download - FreeBuild CV";
-        if (!user) { setLoading(false); return; }
+        if (!user) return;
 
+        let cancelled = false;
         Promise.all([
             getDownloadHistory(),
             getRemainingDownloads(true),
         ]).then(([hist, credit]) => {
+            if (cancelled) return;
             setHistory(hist);
             setCreditInfo(credit);
             setLoading(false);
         });
+        return () => {
+            cancelled = true;
+        };
     }, [user]);
 
     if (!user) {

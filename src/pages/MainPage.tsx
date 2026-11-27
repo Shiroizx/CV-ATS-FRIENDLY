@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, HeartHandshake, ArrowRight, Sparkles, Star, ChevronRight, Users, X } from "lucide-react";
+import { CheckCircle, HeartHandshake, ArrowRight, Sparkles, Star, ChevronRight, Users, X, QrCode } from "lucide-react";
 import Lottie from "lottie-react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -425,6 +425,36 @@ export default function MainPage() {
                   <Skeleton height={42} borderRadius={12} />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* QR Code Generator Spotlight */}
+          <div className="mt-10 rounded-3xl bg-zinc-900 text-white p-7 sm:p-10 border border-zinc-800 relative overflow-hidden">
+            <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+              <div className="flex items-start gap-5 max-w-2xl">
+                <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                  <QrCode className="w-7 h-7 text-blue-400" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[11px] font-bold uppercase tracking-wider mb-2.5">
+                    FITUR BARU • URL SITUS WEB
+                  </div>
+                  <h3 className="text-2xl font-extrabold tracking-tight mb-2">
+                    QR Code Generator Kustom
+                  </h3>
+                  <p className="text-zinc-400 text-sm sm:text-base leading-relaxed">
+                    Ubah tautan portofolio, CV online, atau website Anda menjadi Kode QR profesional lengkap dengan bingkai, pola titik, logo tengah, serta proteksi kata sandi.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/qr-generator")}
+                id="cta-qr-generator"
+                className="w-full lg:w-auto px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-sm font-bold transition-all inline-flex items-center justify-center gap-2 flex-shrink-0 shadow-sm cursor-pointer"
+              >
+                Buat QR Code
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import "animate.css";
@@ -25,6 +26,10 @@ import PrivacyPage from "./pages/PrivacyPage";
 import AdminRoute from "./components/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+const QRGeneratorPage = lazy(() => import("./pages/QRGeneratorPage"));
+const PublicQRViewerPage = lazy(() => import("./pages/PublicQRViewerPage"));
+const MyQRCodesPage = lazy(() => import("./pages/MyQRCodesPage"));
+
 function App() {
   return (
     <AuthProvider>
@@ -41,6 +46,42 @@ function App() {
           <Route path="/builder/portfolio/preview" element={<PortfolioMobilePreview />} />
           <Route path="/builder/portfolio/:id?" element={<PortfolioBuilderPage />} />
           <Route path="/my-resumes" element={<ProtectedRoute><MyResumesPage /></ProtectedRoute>} />
+          <Route
+            path="/qr-generator"
+            element={
+              <Suspense fallback={<div className="min-h-screen bg-[#f7f9fc]" />}>
+                <QRGeneratorPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/qr-generator/:id"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<div className="min-h-screen bg-[#f7f9fc]" />}>
+                  <QRGeneratorPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-qr-codes"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<div className="min-h-screen bg-[#f7f9fc]" />}>
+                  <MyQRCodesPage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/q/:shortCode"
+            element={
+              <Suspense fallback={<div className="min-h-screen bg-[#f7f9fc]" />}>
+                <PublicQRViewerPage />
+              </Suspense>
+            }
+          />
           <Route path="/download-history" element={<ProtectedRoute><DownloadHistoryPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
