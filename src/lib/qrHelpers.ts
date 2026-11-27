@@ -1,7 +1,9 @@
 import type {
+  QRContentData,
   QRPasswordOptions,
   QRStyleOptions,
   UrlContent,
+  VCardContent,
 } from '../types/qrGenerator.ts';
 
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
@@ -84,6 +86,30 @@ export function extractDisplayHost(rawUrl: string): string {
   }
 }
 
+function validatePasswordOptions(
+  passwordOpts: QRPasswordOptions,
+  errors: Record<string, string>
+): void {
+  if (passwordOpts.enabled && !passwordOpts.alreadyProtected) {
+    if (!passwordOpts.password || passwordOpts.password.trim().length < 4) {
+      errors.password = 'Kata sandi minimal 4 karakter.';
+    }
+  } else if (
+    passwordOpts.enabled &&
+    passwordOpts.password.trim().length > 0 &&
+    passwordOpts.password.trim().length < 4
+  ) {
+    errors.password = 'Kata sandi baru minimal 4 karakter.';
+  }
+}
+
+/**
+ * Validasi format email sederhana yang aman.
+ */
+export function validateEmailAddress(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
 /**
  * Validasi form URL Situs Web + Kata sandi opsional di Langkah 2 & 3.
  */
@@ -99,18 +125,68 @@ export function validateUrlQRForm(
     errors.url = 'Masukkan URL situs web yang valid (misalnya https://www.mywebsite.com).';
   }
 
-  if (passwordOpts.enabled && !passwordOpts.alreadyProtected) {
-    if (!passwordOpts.password || passwordOpts.password.trim().length < 4) {
-      errors.password = 'Kata sandi minimal 4 karakter.';
-    }
-  } else if (passwordOpts.enabled && passwordOpts.password.trim().length > 0 && passwordOpts.password.trim().length < 4) {
-    errors.password = 'Kata sandi baru minimal 4 karakter.';
-  }
+  validatePasswordOptions(passwordOpts, errors);
 
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
   };
+}
+
+/**
+ * Validasi form vCard + Kata sandi opsional di Langkah 2 & 3.
+ */
+export function validateVCardQRForm(
+  content: VCardContent,
+  passwordOpts: QRPasswordOptions
+): { isValid: boolean; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+
+  if (!content.fullName.trim()) {
+    errors.fullName = 'Nama lengkap wajib diisi.';
+  }
+
+  if (content.website.trim() && !validateUrl(content.website)) {
+    errors.website = 'Masukkan URL situs web yang valid (misalnya https://adlzil.engineer).';
+  }
+
+  if (content.addressMode === 'url' && content.addressUrl.trim() && !validateUrl(content.addressUrl)) {
+    errors.addressUrl = 'Masukkan URL alamat/peta yang valid.';
+  }
+
+  const invalidEmail = content.emails.some(
+    (item) => item.email.trim().length > 0 && !validateEmailAddress(item.email)
+  );
+  if (invalidEmail) {
+    errors.emails = 'Periksa format alamat email agar valid.';
+  }
+
+  const invalidSocial = content.socials.some(
+    (item) => item.url.trim().length > 0 && !validateUrl(item.url)
+  );
+  if (invalidSocial) {
+    errors.socials = 'Periksa URL tautan media sosial agar valid.';
+  }
+
+  validatePasswordOptions(passwordOpts, errors);
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+}
+
+/**
+ * Validasi terpadu untuk semua jenis konten QR aktif.
+ */
+export function validateQRForm(
+  content: QRContentData,
+  passwordOpts: QRPasswordOptions
+): { isValid: boolean; errors: Record<string, string> } {
+  if (content.type === 'vcard') {
+    return validateVCardQRForm(content, passwordOpts);
+  }
+  return validateUrlQRForm(content, passwordOpts);
 }
 
 /**
@@ -205,13 +281,15 @@ export function checkQRScannability(style: QRStyleOptions): {
 }
 
 /**
- * Memvalidasi metadata file logo unggahan (maks 5 MB, JPG/PNG/SVG/WebP).
+ * Memvalidasi metadata file logo / gambar unggahan (maks 5 MB, JPG/PNG/SVG/WebP/JFIF).
  */
-export function validateLogoFileMeta(meta: { size: number; type: string }): {
+export function validateLogoFileMeta(meta: { size: number; type: string; name?: string }): {
   valid: boolean;
   error?: string;
 } {
-  if (!ALLOWED_LOGO_MIME.has(meta.type.toLowerCase())) {
+  const mime = meta.type.toLowerCase();
+  const isJfif = /\.jfif$/i.test(meta.name || '');
+  if (!ALLOWED_LOGO_MIME.has(mime) && !isJfif) {
     return {
       valid: false,
       error: 'Format gambar harus PNG, JPG, SVG, atau WebP.',
@@ -220,7 +298,7 @@ export function validateLogoFileMeta(meta: { size: number; type: string }): {
   if (meta.size > MAX_LOGO_SIZE_BYTES) {
     return {
       valid: false,
-      error: 'Ukuran file logo melebihi batas maksimum 5 MB.',
+      error: 'Ukuran file gambar melebihi batas maksimum 5 MB.',
     };
   }
   return { valid: true };
@@ -243,10 +321,164 @@ export function generateShortCode(length = 8): string {
 /**
  * Menentukan judul QR yang rapi untuk ditampilkan di daftar tersimpan.
  */
-export function getQRDisplayTitle(content: UrlContent): string {
+export function getQRDisplayTitle(content: QRContentData): string {
   if (content.qrName.trim()) return content.qrName.trim();
+  if (content.type === 'vcard') {
+    return content.fullName.trim() || 'Kartu Nama vCard';
+  }
   const host = extractDisplayHost(content.url);
   return host || 'Kode QR Situs Web';
+}
+
+function escapeVCardText(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,');
+}
+
+function mapPhoneTypeToVcf(label: string): string {
+  switch (label) {
+    case 'Cara Kerja':
+      return 'WORK,VOICE';
+    case 'Ponsel':
+      return 'CELL';
+    case 'Rumah':
+      return 'HOME';
+    case 'Faks':
+      return 'FAX';
+    default:
+      return 'VOICE';
+  }
+}
+
+function mapEmailTypeToVcf(label: string): string {
+  switch (label) {
+    case 'Kerja':
+      return 'WORK';
+    case 'Pribadi':
+      return 'HOME';
+    default:
+      return 'INTERNET';
+  }
+}
+
+/**
+ * Memformat data alamat manual vCard menjadi string satu baris yang rapi.
+ */
+export function formatVCardManualAddress(vcard: VCardContent): string {
+  return [
+    vcard.street.trim(),
+    vcard.city.trim(),
+    vcard.state.trim(),
+    vcard.postalCode.trim(),
+    vcard.country.trim(),
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
+/**
+ * Menghasilkan payload standar vCard 3.0 (.vcf) agar dapat langsung disimpan ke kontak ponsel.
+ */
+export function generateVCardVcfString(vcard: VCardContent): string {
+  const fullName = vcard.fullName.trim() || 'Kontak Baru';
+  const nameParts = fullName.split(/\s+/);
+  const firstName = nameParts[0] || fullName;
+  const lastName = nameParts.slice(1).join(' ');
+
+  const lines: string[] = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `FN:${escapeVCardText(fullName)}`,
+    `N:${escapeVCardText(lastName)};${escapeVCardText(firstName)};;;`,
+  ];
+
+  if (vcard.company.trim()) {
+    lines.push(`ORG:${escapeVCardText(vcard.company.trim())}`);
+  }
+  if (vcard.profession.trim()) {
+    lines.push(`TITLE:${escapeVCardText(vcard.profession.trim())}`);
+  }
+
+  for (const phone of vcard.phones) {
+    const cleanPhone = phone.number.trim();
+    if (cleanPhone) {
+      lines.push(`TEL;TYPE=${mapPhoneTypeToVcf(phone.label)}:${cleanPhone}`);
+    }
+  }
+
+  for (const email of vcard.emails) {
+    const cleanEmail = email.email.trim();
+    if (cleanEmail) {
+      lines.push(`EMAIL;TYPE=${mapEmailTypeToVcf(email.label)}:${cleanEmail}`);
+    }
+  }
+
+  if (vcard.website.trim()) {
+    const safeWeb = sanitizeExternalUrl(vcard.website);
+    if (safeWeb !== '#') {
+      lines.push(`URL:${safeWeb}`);
+    }
+  }
+
+  if (vcard.addressMode === 'manual') {
+    const hasManual =
+      vcard.street.trim() ||
+      vcard.city.trim() ||
+      vcard.state.trim() ||
+      vcard.postalCode.trim() ||
+      vcard.country.trim();
+    if (hasManual) {
+      lines.push(
+        `ADR;TYPE=WORK:;;${escapeVCardText(vcard.street.trim())};${escapeVCardText(
+          vcard.city.trim()
+        )};${escapeVCardText(vcard.state.trim())};${escapeVCardText(
+          vcard.postalCode.trim()
+        )};${escapeVCardText(vcard.country.trim())}`
+      );
+    }
+  } else if (vcard.addressUrl.trim()) {
+    const safeMap = sanitizeExternalUrl(vcard.addressUrl);
+    if (safeMap !== '#') {
+      lines.push(`URL;TYPE=Location:${safeMap}`);
+    }
+  }
+
+  for (const social of vcard.socials) {
+    const safeSocial = sanitizeExternalUrl(social.url);
+    if (safeSocial !== '#') {
+      lines.push(`X-SOCIALPROFILE;TYPE=${social.platform}:${safeSocial}`);
+    }
+  }
+
+  if (vcard.summary.trim()) {
+    lines.push(`NOTE:${escapeVCardText(vcard.summary.trim())}`);
+  }
+
+  lines.push('END:VCARD');
+  return lines.join('\r\n');
+}
+
+/**
+ * Memicu pengunduhan file kontak `.vcf` pada perangkat pengguna.
+ */
+export function downloadVCardFile(vcard: VCardContent): void {
+  const vcfContent = generateVCardVcfString(vcard);
+  const blob = new Blob([vcfContent], { type: 'text/vcard;charset=utf-8' });
+  const slug =
+    (vcard.fullName.trim() || vcard.qrName.trim() || 'kontak')
+      .replace(/[^a-zA-Z0-9_-]+/g, '-')
+      .toLowerCase() || 'kontak';
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${slug}.vcf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**

@@ -30,6 +30,7 @@ import { convertLogoFileToDataUrl } from '../../lib/qrExport';
 import { showError } from '../../utils/swal';
 
 interface QRCustomizerProps {
+  qrTypeLabel?: string;
   style: QRStyleOptions;
   passwordOpts: QRPasswordOptions;
   errors: Record<string, string>;
@@ -262,6 +263,7 @@ const CORNER_DOT_OPTIONS: readonly { id: QRCornerDotType; label: string }[] = [
 ];
 
 export default function QRCustomizer({
+  qrTypeLabel = 'URL Situs Web',
   style,
   passwordOpts,
   errors,
@@ -324,7 +326,7 @@ export default function QRCustomizer({
   return (
     <div className="space-y-5">
       <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 tracking-tight">
-        Kustomisasikan desain untuk kode QR URL Situs Web
+        Kustomisasikan desain untuk kode QR {qrTypeLabel}
       </h2>
 
       {scannability.warnings.length > 0 && (

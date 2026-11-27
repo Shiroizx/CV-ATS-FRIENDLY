@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { getPublicQRByCode, verifyPublicQRPassword } from '../lib/qrService';
 import { extractDisplayHost, sanitizeExternalUrl } from '../lib/qrHelpers';
+import type { VCardContent } from '../types/qrGenerator';
+import VCardMobileView from '../components/qr-generator/VCardMobileView';
 
 export default function PublicQRViewerPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
@@ -21,6 +23,7 @@ export default function PublicQRViewerPage() {
   const [title, setTitle] = useState('Kode QR FreeBuild CV');
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [unlockedUrl, setUnlockedUrl] = useState<string | null>(null);
+  const [vcardContent, setVcardContent] = useState<VCardContent | null>(null);
 
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -51,7 +54,9 @@ export default function PublicQRViewerPage() {
 
       if (data.requires_password) {
         setRequiresPassword(true);
-      } else if (data.content_data?.url) {
+      } else if (data.content_data?.type === 'vcard') {
+        setVcardContent(data.content_data);
+      } else if (data.content_data?.type === 'url' && data.content_data.url) {
         const safe = sanitizeExternalUrl(data.content_data.url);
         setUnlockedUrl(safe);
         if (safe !== '#') {
@@ -82,18 +87,46 @@ export default function PublicQRViewerPage() {
       return;
     }
 
-    if (!res.valid || !res.content_data?.url) {
+    if (!res.valid || !res.content_data) {
       setPwdError('Kata sandi salah. Silakan periksa kembali.');
       return;
     }
 
-    const safe = sanitizeExternalUrl(res.content_data.url);
+    if (res.content_data.type === 'vcard') {
+      setVcardContent(res.content_data);
+      setRequiresPassword(false);
+      return;
+    }
+
+    const safe = sanitizeExternalUrl(res.content_data.url || '');
     setUnlockedUrl(safe);
     setRequiresPassword(false);
     if (safe !== '#') {
       window.location.replace(safe);
     }
   };
+
+  if (vcardContent) {
+    return (
+      <div className="min-h-screen bg-[#f7f9fc] flex flex-col items-center justify-center p-4 sm:py-8">
+        <div className="w-full max-w-md bg-white rounded-[32px] border border-zinc-200 shadow-xl overflow-hidden flex flex-col min-h-[600px]">
+          <VCardMobileView
+            content={vcardContent}
+            playSplashOnMount
+            compact={false}
+          />
+        </div>
+
+        <Link
+          to="/"
+          className="mt-6 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors"
+        >
+          <QrCode className="w-3.5 h-3.5" />
+          Dibuat dengan FreeBuild CV
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f9fc] flex flex-col items-center justify-center p-4">

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Battery,
   Check,
@@ -12,24 +12,28 @@ import {
   Wifi,
 } from 'lucide-react';
 import type {
+  QRContentData,
   QRStyleOptions,
   QRType,
-  UrlContent,
   WizardStep,
 } from '../../types/qrGenerator';
 import {
   buildWatermarkTileDataUrl,
+  calculateRelativeLuminance,
   extractDisplayHost,
+  getQRDisplayTitle,
   sanitizeExternalUrl,
 } from '../../lib/qrHelpers';
 import type { DownloadCreditInfo } from '../../lib/downloadCredit';
 import FramedQRCanvas from './FramedQRCanvas';
 import QRTypeHoverPreview from './QRTypeHoverPreview';
+import VCardMobileView, { VCardSplashOverlay } from './VCardMobileView';
 
 interface QRPreviewProps {
   step: WizardStep;
   hoveredType?: QRType | null;
-  content: UrlContent;
+  splashTrigger?: number;
+  content: QRContentData;
   style: QRStyleOptions;
   qrPayload: string;
   passwordEnabled: boolean;
@@ -46,6 +50,7 @@ interface QRPreviewProps {
 export default function QRPreview({
   step,
   hoveredType = null,
+  splashTrigger = 0,
   content,
   style,
   qrPayload,
@@ -61,14 +66,44 @@ export default function QRPreview({
 }: QRPreviewProps) {
   const [prevStep, setPrevStep] = useState<WizardStep>(step);
   const [tab, setTab] = useState<'preview' | 'qr'>(step === 2 ? 'preview' : 'qr');
+  const [prevSplashTrigger, setPrevSplashTrigger] = useState(splashTrigger);
+  const [showingVCardSplash, setShowingVCardSplash] = useState(false);
 
   if (prevStep !== step) {
     setPrevStep(step);
     setTab(step === 2 ? 'preview' : 'qr');
   }
 
-  const displayHost = extractDisplayHost(content.url);
-  const safeHref = sanitizeExternalUrl(content.url);
+  if (splashTrigger !== prevSplashTrigger) {
+    setPrevSplashTrigger(splashTrigger);
+    if (content.type === 'vcard' && content.splashDataUrl) {
+      setTab('preview');
+      setShowingVCardSplash(true);
+    }
+  }
+
+  useEffect(() => {
+    if (!showingVCardSplash) return;
+    const timer = setTimeout(() => setShowingVCardSplash(false), 1450);
+    return () => clearTimeout(timer);
+  }, [showingVCardSplash]);
+
+  const displayHost =
+    content.type === 'url'
+      ? extractDisplayHost(content.url)
+      : getQRDisplayTitle(content);
+  const safeHref =
+    content.type === 'url' ? sanitizeExternalUrl(content.url) : '#';
+  const isVCardPreviewTab = Boolean(
+    step > 1 && content.type === 'vcard' && tab === 'preview'
+  );
+  const vcardHeroPrimary =
+    content.type === 'vcard' &&
+    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(content.primaryColor)
+      ? content.primaryColor
+      : '#6594FF';
+  const vcardStatusLightText =
+    isVCardPreviewTab && calculateRelativeLuminance(vcardHeroPrimary) <= 0.55;
   const isPhoneWatermarkVisible = Boolean(showWatermark && step > 1 && tab === 'qr');
   const phoneWatermarkUrl = useMemo(
     () => (isPhoneWatermarkVisible ? buildWatermarkTileDataUrl(false) : ''),
@@ -115,6 +150,15 @@ export default function QRPreview({
         <span className="hidden sm:block absolute -right-1 top-32 w-1 h-14 bg-zinc-800 rounded-r" />
 
         <div className="relative bg-white rounded-[36px] overflow-hidden min-h-[545px] flex flex-col">
+          {content.type === 'vcard' && step > 1 && (
+            <VCardSplashOverlay
+              visible={showingVCardSplash && tab === 'preview'}
+              imageUrl={content.splashDataUrl}
+              onDismiss={() => setShowingVCardSplash(false)}
+              initialFadeIn
+            />
+          )}
+
           {isPhoneWatermarkVisible && (
             <div
               aria-hidden="true"
@@ -128,7 +172,20 @@ export default function QRPreview({
           )}
 
           {/* Status bar & Dynamic Island */}
-          <div className="relative z-10 px-6 pt-3 pb-2 flex items-center justify-between text-[11px] font-bold text-zinc-900">
+          <div
+            className={`relative z-30 px-6 pt-3 pb-2 flex items-center justify-between text-[11px] font-bold transition-colors duration-300 ${
+              showingVCardSplash && tab === 'preview'
+                ? 'text-zinc-900'
+                : vcardStatusLightText
+                  ? 'text-white'
+                  : 'text-zinc-900'
+            }`}
+            style={
+              isVCardPreviewTab && !(showingVCardSplash && tab === 'preview')
+                ? { backgroundColor: vcardHeroPrimary }
+                : undefined
+            }
+          >
             <span>18:45</span>
             <div className="w-20 h-5 bg-zinc-950 rounded-full mx-auto" />
             <div className="flex items-center gap-1.5">
@@ -165,19 +222,27 @@ export default function QRPreview({
             )
           ) : (
             <div className="relative z-10 flex-1 flex flex-col">
-              {/* Mini browser address bar inside phone */}
-              <div className="px-4 pb-3">
-                <div className="bg-zinc-100/90 backdrop-blur-xs rounded-full px-3 py-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-zinc-600 truncate">
-                  {passwordEnabled ? (
-                    <Lock className="w-3 h-3 text-amber-600 flex-shrink-0" />
-                  ) : (
-                    <Globe className="w-3 h-3 text-zinc-500 flex-shrink-0" />
-                  )}
-                  <span className="truncate">{displayHost}</span>
+              {/* Mini browser address bar inside phone (hanya untuk URL atau tab Kode QR) */}
+              {!isVCardPreviewTab && (
+                <div className="px-4 pb-3">
+                  <div className="bg-zinc-100/90 backdrop-blur-xs rounded-full px-3 py-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-zinc-600 truncate">
+                    {passwordEnabled ? (
+                      <Lock className="w-3 h-3 text-amber-600 flex-shrink-0" />
+                    ) : (
+                      <Globe className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                    )}
+                    <span className="truncate">{displayHost}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {tab === 'preview' ? (
+                content.type === 'vcard' ? (
+                  <VCardMobileView
+                    content={content}
+                    compact
+                  />
+                ) : (
                 /* Pratinjau halaman tujuan (sesuai screenshot image.png) */
                 <div className="flex-1 bg-indigo-100/70 p-3 flex flex-col gap-3">
                   <div className="bg-white rounded-2xl p-3.5 shadow-2xs space-y-3">
@@ -220,6 +285,7 @@ export default function QRPreview({
                     <div className="mt-auto w-full h-9 rounded-xl bg-indigo-300/70" />
                   )}
                 </div>
+                )
               ) : (
                 /* Kode QR Live Preview */
                 <div className="flex-1 flex flex-col items-center justify-center px-5 pb-6">

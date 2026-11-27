@@ -15,15 +15,18 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import type {
+  QRContentData,
   QRPasswordOptions,
   QRStyleOptions,
   QRType,
   UrlContent,
+  VCardContent,
   WizardStep,
 } from '../types/qrGenerator';
 import {
   DEFAULT_QR_STYLE,
   INITIAL_URL_CONTENT,
+  INITIAL_VCARD_CONTENT,
 } from '../types/qrGenerator';
 import {
   checkQRScannability,
@@ -31,7 +34,7 @@ import {
   getQRDisplayTitle,
   normalizeUrl,
   resolveUrlQRPayload,
-  validateUrlQRForm,
+  validateQRForm,
 } from '../lib/qrHelpers';
 import { exportQRFile } from '../lib/qrExport';
 import {
@@ -53,6 +56,7 @@ import {
 import QRStepIndicator from '../components/qr-generator/QRStepIndicator';
 import QRTypeSelector from '../components/qr-generator/QRTypeSelector';
 import QRUrlContentForm from '../components/qr-generator/QRUrlContentForm';
+import QRVCardContentForm from '../components/qr-generator/QRVCardContentForm';
 import QRCustomizer from '../components/qr-generator/QRCustomizer';
 import QRPreview from '../components/qr-generator/QRPreview';
 
@@ -62,9 +66,35 @@ const DRAFT_PWD_KEY = 'freebuild_qr_pwd_v1';
 interface StoredQRDraft {
   step: WizardStep;
   maxReachedStep: WizardStep;
-  content: UrlContent;
+  content: QRContentData;
   style: QRStyleOptions;
   shortCode: string;
+}
+
+function coerceContentData(
+  raw: Partial<QRContentData> | null | undefined,
+  explicitType?: QRType
+): QRContentData {
+  const targetType = explicitType || raw?.type;
+  if (targetType === 'vcard') {
+    const vc = (raw || {}) as Partial<VCardContent>;
+    return {
+      ...INITIAL_VCARD_CONTENT,
+      ...vc,
+      type: 'vcard',
+      phones:
+        Array.isArray(vc.phones) && vc.phones.length > 0
+          ? vc.phones
+          : INITIAL_VCARD_CONTENT.phones,
+      emails:
+        Array.isArray(vc.emails) && vc.emails.length > 0
+          ? vc.emails
+          : INITIAL_VCARD_CONTENT.emails,
+      socials: Array.isArray(vc.socials) ? vc.socials : [],
+    };
+  }
+  const u = (raw || {}) as Partial<UrlContent>;
+  return { ...INITIAL_URL_CONTENT, ...u, type: 'url' };
 }
 
 function readQRDraft(hasEditId: boolean): StoredQRDraft | null {
@@ -78,7 +108,7 @@ function readQRDraft(hasEditId: boolean): StoredQRDraft | null {
       step: parsed.step === 2 || parsed.step === 3 ? parsed.step : 1,
       maxReachedStep:
         parsed.maxReachedStep === 3 ? 3 : parsed.maxReachedStep === 2 ? 2 : 1,
-      content: { ...INITIAL_URL_CONTENT, ...parsed.content, type: 'url' },
+      content: coerceContentData(parsed.content),
       style: { ...DEFAULT_QR_STYLE, ...parsed.style },
       shortCode:
         typeof parsed.shortCode === 'string' && parsed.shortCode.length >= 4
@@ -111,7 +141,7 @@ function readDraftPassword(hasEditId: boolean): QRPasswordOptions {
 function persistQRDraft(
   step: WizardStep,
   maxReachedStep: WizardStep,
-  content: UrlContent,
+  content: QRContentData,
   style: QRStyleOptions,
   passwordOpts: QRPasswordOptions,
   shortCode: string
@@ -154,10 +184,13 @@ export default function QRGeneratorPage() {
   const [maxReachedStep, setMaxReachedStep] = useState<WizardStep>(
     () => initialDraft?.maxReachedStep ?? 1
   );
-  const [selectedType, setSelectedType] = useState<QRType | null>('url');
-  const [content, setContent] = useState<UrlContent>(
+  const [selectedType, setSelectedType] = useState<QRType | null>(
+    () => initialDraft?.content.type ?? 'url'
+  );
+  const [content, setContent] = useState<QRContentData>(
     () => initialDraft?.content ?? INITIAL_URL_CONTENT
   );
+  const [splashPreviewNonce, setSplashPreviewNonce] = useState(0);
   const [style, setStyle] = useState<QRStyleOptions>(
     () => initialDraft?.style ?? DEFAULT_QR_STYLE
   );
@@ -221,7 +254,11 @@ export default function QRGeneratorPage() {
   // Simpan draft otomatis di browser agar tidak hilang saat pengguna diarahkan ke Login/Register
   useEffect(() => {
     if (id || savedId) return;
-    if (!content.url.trim() && !content.qrName.trim() && step === 1) return;
+    const hasDraftData =
+      content.type === 'vcard'
+        ? Boolean(content.fullName.trim() || content.qrName.trim() || content.avatarDataUrl)
+        : Boolean(content.url.trim() || content.qrName.trim());
+    if (!hasDraftData && step === 1) return;
     persistQRDraft(step, maxReachedStep, content, style, passwordOpts, shortCode);
   }, [id, savedId, step, maxReachedStep, content, style, passwordOpts, shortCode]);
 
@@ -247,7 +284,7 @@ export default function QRGeneratorPage() {
       setSavedId(data.id);
       setShortCode(data.short_code);
       setSelectedType(data.qr_type);
-      setContent(data.content_data);
+      setContent(coerceContentData(data.content_data, data.qr_type));
       setStyle({ ...DEFAULT_QR_STYLE, ...data.style_options });
       setPasswordOpts({
         enabled: data.requires_password,
@@ -268,15 +305,14 @@ export default function QRGeneratorPage() {
     typeof window !== 'undefined' ? window.location.origin : 'https://www.freebuildcv.tech';
   const qrPayload = resolveUrlQRPayload(origin, shortCode);
 
-  const updateContent = (next: UrlContent) => {
+  const updateContent = (next: QRContentData) => {
     setContent(next);
     setHasUnsavedChanges(true);
     setHasDownloaded(false);
-    if (errors.url) {
-      setErrors((prev) => {
-        const copy = { ...prev };
-        delete copy.url;
-        return copy;
+    if (Object.keys(errors).length > 0) {
+      setErrors((prev): Record<string, string> => {
+        if (!prev.password) return {};
+        return { password: prev.password };
       });
     }
   };
@@ -302,36 +338,79 @@ export default function QRGeneratorPage() {
 
   const handleSelectType = (type: QRType) => {
     setSelectedType(type);
+    if (type === 'vcard' && content.type !== 'vcard') {
+      setContent(INITIAL_VCARD_CONTENT);
+      setHasUnsavedChanges(false);
+      setHasDownloaded(false);
+      setErrors({});
+    } else if (type === 'url' && content.type !== 'url') {
+      setContent(INITIAL_URL_CONTENT);
+      setHasUnsavedChanges(false);
+      setHasDownloaded(false);
+      setErrors({});
+    }
     setStep(2);
     setMaxReachedStep((prev) => (prev < 2 ? 2 : prev));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const normalizeContentForSave = (raw: QRContentData): QRContentData => {
+    if (raw.type === 'vcard') {
+      return {
+        ...raw,
+        qrName: raw.qrName.trim(),
+        fullName: raw.fullName.trim(),
+        website: raw.website.trim() ? normalizeUrl(raw.website) : '',
+        company: raw.company.trim(),
+        profession: raw.profession.trim(),
+        summary: raw.summary.trim(),
+        addressUrl: raw.addressUrl.trim() ? normalizeUrl(raw.addressUrl) : '',
+        phones: raw.phones.map((p) => ({ ...p, number: p.number.trim() })),
+        emails: raw.emails.map((em) => ({ ...em, email: em.email.trim() })),
+        socials: raw.socials
+          .filter((s) => s.url.trim().length > 0)
+          .map((s) => ({ ...s, url: normalizeUrl(s.url), label: s.label.trim() })),
+      };
+    }
+    return {
+      type: 'url',
+      url: normalizeUrl(raw.url),
+      qrName: raw.qrName.trim(),
+    };
+  };
+
+  const handleInvalidValidation = (validationErrors: Record<string, string>) => {
+    setErrors(validationErrors);
+    const step2Err =
+      validationErrors.url ||
+      validationErrors.fullName ||
+      validationErrors.website ||
+      validationErrors.emails ||
+      validationErrors.socials ||
+      validationErrors.addressUrl;
+    if (step2Err) {
+      setStep(2);
+    }
+    void showToast(
+      'error',
+      step2Err || validationErrors.password || 'Periksa kembali data QR Anda.'
+    );
+  };
+
   const handleSaveToSupabase = async (): Promise<boolean> => {
-    const validation = validateUrlQRForm(content, passwordOpts);
+    const validation = validateQRForm(content, passwordOpts);
     if (!validation.isValid) {
-      setErrors(validation.errors);
-      if (validation.errors.url) {
-        setStep(2);
-      }
-      void showToast(
-        'error',
-        validation.errors.url || validation.errors.password || 'Periksa kembali data QR Anda.'
-      );
+      handleInvalidValidation(validation.errors);
       return false;
     }
 
-    const normalizedContent: UrlContent = {
-      type: 'url',
-      url: normalizeUrl(content.url),
-      qrName: content.qrName.trim(),
-    };
+    const normalizedContent = normalizeContentForSave(content);
 
     setIsSaving(true);
     const { data, error } = await saveUserQR({
       id: savedId,
       shortCode,
-      qrType: 'url',
+      qrType: normalizedContent.type,
       title: getQRDisplayTitle(normalizedContent),
       content: normalizedContent,
       style,
@@ -369,8 +448,8 @@ export default function QRGeneratorPage() {
 
   const handleNext = () => {
     if (step === 1) {
-      if (selectedType !== 'url') {
-        void showToast('info', 'Pilih URL Situs Web untuk melanjutkan.');
+      if (selectedType !== 'url' && selectedType !== 'vcard') {
+        void showToast('info', 'Pilih URL Situs Web atau vCard untuk melanjutkan.');
         return;
       }
       setStep(2);
@@ -380,10 +459,9 @@ export default function QRGeneratorPage() {
     }
 
     if (step === 2) {
-      const check = validateUrlQRForm(content, { enabled: false, password: '' });
+      const check = validateQRForm(content, { enabled: false, password: '' });
       if (!check.isValid) {
-        setErrors(check.errors);
-        void showToast('error', check.errors.url || 'Lengkapi URL terlebih dahulu.');
+        handleInvalidValidation(check.errors);
         return;
       }
       setErrors({});
@@ -403,14 +481,9 @@ export default function QRGeneratorPage() {
   };
 
   const redirectToLoginForDownload = () => {
-    const validation = validateUrlQRForm(content, passwordOpts);
+    const validation = validateQRForm(content, passwordOpts);
     if (!validation.isValid) {
-      setErrors(validation.errors);
-      if (validation.errors.url) setStep(2);
-      void showToast(
-        'error',
-        validation.errors.url || validation.errors.password || 'Periksa kembali data QR Anda.'
-      );
+      handleInvalidValidation(validation.errors);
       return;
     }
 
@@ -426,14 +499,9 @@ export default function QRGeneratorPage() {
       return;
     }
 
-    const validation = validateUrlQRForm(content, passwordOpts);
+    const validation = validateQRForm(content, passwordOpts);
     if (!validation.isValid) {
-      setErrors(validation.errors);
-      if (validation.errors.url) setStep(2);
-      void showToast(
-        'error',
-        validation.errors.url || validation.errors.password || 'Periksa kembali data QR Anda.'
-      );
+      handleInvalidValidation(validation.errors);
       return;
     }
 
@@ -517,7 +585,7 @@ export default function QRGeneratorPage() {
               </span>
             </div>
             <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold">
-              URL Situs Web
+              {selectedType === 'vcard' ? 'vCard' : 'URL Situs Web'}
             </span>
           </div>
 
@@ -587,17 +655,26 @@ export default function QRGeneratorPage() {
 
               {step === 2 && (
                 <motion.div
-                  key="step-2"
+                  key={`step-2-${content.type}`}
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 12 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <QRUrlContentForm
-                    content={content}
-                    errors={errors}
-                    onChange={updateContent}
-                  />
+                  {content.type === 'vcard' ? (
+                    <QRVCardContentForm
+                      content={content}
+                      errors={errors}
+                      onChange={updateContent}
+                      onPreviewSplash={() => setSplashPreviewNonce((n) => n + 1)}
+                    />
+                  ) : (
+                    <QRUrlContentForm
+                      content={content}
+                      errors={errors}
+                      onChange={updateContent}
+                    />
+                  )}
                 </motion.div>
               )}
 
@@ -610,6 +687,7 @@ export default function QRGeneratorPage() {
                   transition={{ duration: 0.2 }}
                 >
                   <QRCustomizer
+                    qrTypeLabel={selectedType === 'vcard' ? 'vCard' : 'URL Situs Web'}
                     style={style}
                     passwordOpts={passwordOpts}
                     errors={errors}
@@ -626,6 +704,7 @@ export default function QRGeneratorPage() {
             <QRPreview
               step={step}
               hoveredType={hoveredType}
+              splashTrigger={splashPreviewNonce}
               content={content}
               style={style}
               qrPayload={qrPayload}
@@ -668,6 +747,7 @@ export default function QRGeneratorPage() {
             <QRPreview
               step={step}
               hoveredType={hoveredType}
+              splashTrigger={splashPreviewNonce}
               content={content}
               style={style}
               qrPayload={qrPayload}

@@ -114,3 +114,232 @@ export const QUICK_COLOR_SWATCHES: readonly string[] = [
   '#7C3AED',
   '#EA580C',
 ] as const;
+
+export interface VCardSocialPlatform {
+  id: string;
+  label: string;
+  defaultUrl: string;
+  defaultText: string;
+  iconDataUrl: string;
+  extra?: boolean;
+}
+
+function getPresetIconUrl(id: string): string {
+  return QR_LOGO_PRESETS.find((p) => p.id === id)?.dataUrl || '';
+}
+
+export const VCARD_SOCIAL_PLATFORMS: readonly VCardSocialPlatform[] = [
+  {
+    id: 'facebook',
+    label: 'Facebook',
+    defaultUrl: 'https://www.facebook.com/',
+    defaultText: 'My Facebook',
+    iconDataUrl: getPresetIconUrl('facebook'),
+  },
+  {
+    id: 'instagram',
+    label: 'Instagram',
+    defaultUrl: 'https://www.instagram.com/',
+    defaultText: 'My Instagram',
+    iconDataUrl: getPresetIconUrl('instagram'),
+  },
+  {
+    id: 'twitter',
+    label: 'Twitter',
+    defaultUrl: 'https://twitter.com/',
+    defaultText: 'My Twitter',
+    iconDataUrl: getPresetIconUrl('twitter'),
+  },
+  {
+    id: 'x',
+    label: 'X',
+    defaultUrl: 'https://x.com/',
+    defaultText: 'My X',
+    iconDataUrl: getPresetIconUrl('x'),
+  },
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp',
+    defaultUrl: 'https://wa.me/',
+    defaultText: 'Chat WhatsApp',
+    iconDataUrl: getPresetIconUrl('whatsapp'),
+  },
+  {
+    id: 'tiktok',
+    label: 'TikTok',
+    defaultUrl: 'https://www.tiktok.com/@',
+    defaultText: 'My TikTok',
+    iconDataUrl: getPresetIconUrl('tiktok'),
+  },
+  {
+    id: 'snapchat',
+    label: 'Snapchat',
+    defaultUrl: 'https://www.snapchat.com/add/',
+    defaultText: 'My Snapchat',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#FFFC00"/><path fill="#fff" stroke="#18181B" stroke-width="2.5" d="M32 15c-6.8 0-11.2 4.6-11.2 11.4 0 2 .3 3.5.3 3.5s-2.4.7-2.6 2.1c-.1 1.1 1.6 1.8 2.8 2.2.3.1.4.4.3.7-.7 2.4-2.8 4.9-6.6 5.9-.8.2-1 1-.3 1.4 1.6 1 3.7 1.6 5.4 1.9.4.8.7 2.2 1.8 2.6 1.2.4 2.8-.6 4.7-.6s3.2 1.6 5.4 1.6 3.5-1.6 5.4-1.6 3.5 1 4.7.6c1.1-.4 1.4-1.8 1.8-2.6 1.7-.3 3.8-.9 5.4-1.9.7-.4.5-1.2-.3-1.4-3.8-1-5.9-3.5-6.6-5.9-.1-.3 0-.6.3-.7 1.2-.4 2.9-1.1 2.8-2.2-.2-1.4-2.6-2.1-2.6-2.1s.3-1.5.3-3.5C43.2 19.6 38.8 15 32 15z"/></svg>`
+    ),
+  },
+  {
+    id: 'youtube',
+    label: 'YouTube',
+    defaultUrl: 'https://www.youtube.com/@',
+    defaultText: 'My YouTube',
+    iconDataUrl: getPresetIconUrl('youtube'),
+  },
+  {
+    id: 'telegram',
+    label: 'Telegram',
+    defaultUrl: 'https://t.me/',
+    defaultText: 'My Telegram',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#26A5E4"/><path fill="#fff" d="M47.6 18.4L15.4 30.9c-2.2.9-2.2 2.1-.4 2.7l8.2 2.6 3.1 9.8c.4 1.1.2 1.5 1.4 1.5.9 0 1.3-.4 1.8-.9l4.4-4.3 9.1 6.7c1.7.9 2.9.4 3.3-1.6l5.9-27.9c.6-2.5-.9-3.6-2.6-2.9zm-4.5 5.4l-16.4 14.8-.6 6.7-2.8-8.8 19.8-12.7z"/></svg>`
+    ),
+  },
+  {
+    id: 'messenger',
+    label: 'Messenger',
+    defaultUrl: 'https://m.me/',
+    defaultText: 'My Messenger',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#0084FF"/><path fill="#fff" d="M32 15c-9.9 0-17.6 7.3-17.6 16.7 0 5.2 2.5 9.9 6.5 12.9v6l6.1-3.3c1.6.4 3.3.7 5 .7 9.9 0 17.6-7.3 17.6-16.7S41.9 15 32 15zm1.8 22.3l-4.5-4.8-8.7 4.8 9.6-10.2 4.6 4.8 8.6-4.8-9.6 10.2z"/></svg>`
+    ),
+  },
+  {
+    id: 'google',
+    label: 'Google',
+    defaultUrl: 'https://www.google.com/',
+    defaultText: 'Profil Google',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#F97316"/><path fill="#fff" d="M32 29v7h9.8c-.4 2.5-2.9 7.3-9.8 7.3-5.9 0-10.7-4.9-10.7-11s4.8-11 10.7-11c3.4 0 5.6 1.4 6.9 2.7l4.7-4.6C40.6 16.7 36.7 15 32 15c-9.4 0-17 7.6-17 17s7.6 17 17 17c9.8 0 16.3-6.9 16.3-16.6 0-1.1-.1-2-.3-2.9H32z"/></svg>`
+    ),
+  },
+  {
+    id: 'pinterest',
+    label: 'Pinterest',
+    defaultUrl: 'https://www.pinterest.com/',
+    defaultText: 'My Pinterest',
+    iconDataUrl: getPresetIconUrl('pinterest'),
+  },
+  {
+    id: 'linkedin',
+    label: 'LinkedIn',
+    defaultUrl: 'https://www.linkedin.com/in/',
+    defaultText: 'My LinkedIn',
+    iconDataUrl: getPresetIconUrl('linkedin'),
+  },
+  {
+    id: 'line',
+    label: 'LINE',
+    defaultUrl: 'https://line.me/ti/p/',
+    defaultText: 'My LINE',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#06C755"/><path fill="#fff" d="M32 16c-9.9 0-18 6.4-18 14.3 0 7.1 6.3 13 14.8 14.1.6.1 1.4.4 1.6.9.2.5.1 1.2.1 1.7l-.3 1.5c-.1.4-.4 1.7 1.5.9 1.9-.8 10.1-5.9 13.8-10.2C48.5 36.1 50 33.4 50 30.3 50 22.4 41.9 16 32 16z"/></svg>`
+    ),
+  },
+  {
+    id: 'reddit',
+    label: 'Reddit',
+    defaultUrl: 'https://www.reddit.com/user/',
+    defaultText: 'My Reddit',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#FF4500"/><circle cx="32" cy="35" r="14" fill="#fff"/><circle cx="26.5" cy="34" r="2.5" fill="#FF4500"/><circle cx="37.5" cy="34" r="2.5" fill="#FF4500"/><path d="M27 40c1.4 1.4 3.1 2 5 2s3.6-.6 5-2" fill="none" stroke="#FF4500" stroke-width="2.2" stroke-linecap="round"/><path d="M32 21l2.8-6.5 6.2 1.5" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><circle cx="43" cy="17" r="2.5" fill="#fff"/></svg>`
+    ),
+  },
+  {
+    id: 'github',
+    label: 'GitHub',
+    defaultUrl: 'https://github.com/',
+    defaultText: 'My GitHub',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#0F766E"/><path fill="#fff" d="M32 14a18 18 0 00-5.7 35.1c.9.2 1.2-.4 1.2-.9v-3.2c-5 1.1-6-2.4-6-2.4-.8-2.1-2-2.6-2-2.6-1.6-1.1.1-1.1.1-1.1 1.8.1 2.8 1.9 2.8 1.9 1.6 2.8 4.2 2 5.2 1.5.2-1.2.6-2 1.1-2.4-4-.5-8.2-2-8.2-8.9 0-2 .7-3.6 1.9-4.9-.2-.5-.8-2.3.2-4.8 0 0 1.5-.5 5 1.9a17.2 17.2 0 019 0c3.5-2.4 5-1.9 5-1.9 1 2.5.4 4.3.2 4.8 1.2 1.3 1.9 2.9 1.9 4.9 0 6.9-4.2 8.4-8.2 8.9.6.5 1.2 1.6 1.2 3.3v4.9c0 .5.3 1.1 1.2.9A18 18 0 0032 14z"/></svg>`
+    ),
+  },
+  {
+    id: 'dribbble',
+    label: 'Dribbble',
+    defaultUrl: 'https://dribbble.com/',
+    defaultText: 'My Dribbble',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#EA4C89"/><circle cx="32" cy="32" r="15" fill="none" stroke="#fff" stroke-width="3.2"/><path d="M20 24c8 1 15 8 19 21M18 35c10-.2 19-3.6 26-10M27 18c6 6 11 16 14 27" fill="none" stroke="#fff" stroke-width="2.5"/></svg>`
+    ),
+  },
+  {
+    id: 'tumblr',
+    label: 'Tumblr',
+    defaultUrl: 'https://www.tumblr.com/',
+    defaultText: 'My Tumblr',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#35465C"/><path fill="#fff" d="M36 47c-5.6 0-8.6-3-8.6-8.3V28h-4v-5.2c4.4-1.4 6.5-5 6.9-8.8h5.1v8h6.4V28h-6.4v9.8c0 2.5 1.3 3.7 3.8 3.7h2.8V47H36z"/></svg>`
+    ),
+    extra: true,
+  },
+  {
+    id: 'vk',
+    label: 'VK',
+    defaultUrl: 'https://vk.com/',
+    defaultText: 'My VK',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#0077FF"/><path fill="#fff" d="M33.6 43c-10.3 0-16.2-7-16.4-18.8h5.2c.2 8.6 4 12.2 7 13V24.2h4.9v7.4c3-.3 6.1-3.7 7.1-7.4h4.9c-.8 4.6-4.1 8-6.5 9.4 2.4 1.1 6.2 4.1 7.6 9.4H42c-1.1-3.6-3.9-6.3-7.7-6.7V43h-.7z"/></svg>`
+    ),
+    extra: true,
+  },
+  {
+    id: 'gmail',
+    label: 'Gmail',
+    defaultUrl: 'mailto:',
+    defaultText: 'Email Gmail',
+    iconDataUrl: getPresetIconUrl('gmail'),
+    extra: true,
+  },
+  {
+    id: 'outlook',
+    label: 'Outlook',
+    defaultUrl: 'mailto:',
+    defaultText: 'Email Outlook',
+    iconDataUrl: getPresetIconUrl('outlook'),
+    extra: true,
+  },
+  {
+    id: 'apple',
+    label: 'Apple',
+    defaultUrl: 'https://apps.apple.com/',
+    defaultText: 'App Store',
+    iconDataUrl: getPresetIconUrl('apple'),
+    extra: true,
+  },
+  {
+    id: 'netflix',
+    label: 'Portfolio Video',
+    defaultUrl: 'https://www.youtube.com/',
+    defaultText: 'Tonton Karya',
+    iconDataUrl: getPresetIconUrl('netflix'),
+    extra: true,
+  },
+  {
+    id: 'discord',
+    label: 'Discord',
+    defaultUrl: 'https://discord.gg/',
+    defaultText: 'Komunitas Discord',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#5865F2"/><path fill="#fff" d="M44 21.5a26 26 0 00-6.5-2l-.8 1.6a23 23 0 00-9.4 0l-.8-1.6a26 26 0 00-6.5 2C15.9 27.7 14.8 33.8 15.3 39.8a26.3 26.3 0 008 4l1.7-2.8a16.8 16.8 0 01-2.6-1.3l.6-.5c5 2.3 10.6 2.3 15.6 0l.6.5a16.8 16.8 0 01-2.6 1.3l1.7 2.8a26.3 26.3 0 008-4c.6-6.9-1-13-4.3-18.3zM26.5 35.8c-1.5 0-2.7-1.4-2.7-3.1s1.2-3.1 2.7-3.1 2.8 1.4 2.7 3.1c0 1.7-1.2 3.1-2.7 3.1zm11 0c-1.5 0-2.7-1.4-2.7-3.1s1.2-3.1 2.7-3.1 2.8 1.4 2.7 3.1c0 1.7-1.2 3.1-2.7 3.1z"/></svg>`
+    ),
+    extra: true,
+  },
+  {
+    id: 'threads',
+    label: 'Threads',
+    defaultUrl: 'https://www.threads.net/@',
+    defaultText: 'My Threads',
+    iconDataUrl: toSvgDataUrl(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#18181B"/><path fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" d="M41.5 28.5c-1.5-5.5-5.5-8.5-10.5-8.5-6.6 0-11.5 5.2-11.5 12s4.9 12 11.5 12c5.4 0 9.6-3.1 10.8-8.1.5-2-.4-4.2-2.4-5-2.1-.8-4.7.2-5.4 2.4-.5 1.7-1.9 2.7-3.5 2.7-2.2 0-3.8-1.8-3.8-4s1.6-4 3.8-4c2.8 0 4.5 1.8 4.8 4.4.4 3.6 3.5 5.5 6.8 4.6 3.1-.8 4.9-4.1 4.4-8.1"/></svg>`
+    ),
+    extra: true,
+  },
+] as const;
+
+export function getSocialPlatformMeta(platformId: string): VCardSocialPlatform {
+  return (
+    VCARD_SOCIAL_PLATFORMS.find((p) => p.id === platformId) ?? VCARD_SOCIAL_PLATFORMS[0]
+  );
+}

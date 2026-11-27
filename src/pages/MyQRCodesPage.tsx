@@ -10,6 +10,7 @@ import {
   Plus,
   QrCode,
   Trash2,
+  User,
 } from 'lucide-react';
 import type { SavedQRCode } from '../types/qrGenerator';
 import { DEFAULT_QR_STYLE } from '../types/qrGenerator';
@@ -229,7 +230,10 @@ export default function MyQRCodesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {items.map((qr) => {
-              const targetHref = sanitizeExternalUrl(qr.content_data?.url || '');
+              const targetHref =
+                qr.content_data?.type === 'url'
+                  ? sanitizeExternalUrl(qr.content_data.url)
+                  : '#';
               return (
                 <div
                   key={qr.id}
@@ -240,8 +244,14 @@ export default function MyQRCodesPage() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                        <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">
-                          URL Situs Web
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                            qr.qr_type === 'vcard'
+                              ? 'bg-indigo-50 text-indigo-700'
+                              : 'bg-blue-50 text-blue-700'
+                          }`}
+                        >
+                          {qr.qr_type === 'vcard' ? 'vCard' : 'URL Situs Web'}
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
                           Aktif • {qr.scan_count}× scan
@@ -258,17 +268,40 @@ export default function MyQRCodesPage() {
                         {qr.title}
                       </h3>
 
-                      <a
-                        href={targetHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-blue-600 truncate max-w-full mt-0.5"
-                      >
-                        <span className="truncate">
-                          {extractDisplayHost(qr.content_data?.url || '')}
-                        </span>
-                        <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                      </a>
+                      {qr.content_data?.type === 'vcard' ? (
+                        <a
+                          href={`/q/${qr.short_code}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-blue-600 truncate max-w-full mt-0.5"
+                        >
+                          <User className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">
+                            {[
+                              qr.content_data.fullName,
+                              qr.content_data.profession,
+                              qr.content_data.company,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ') || 'Kartu Nama Digital'}
+                          </span>
+                          <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                        </a>
+                      ) : (
+                        <a
+                          href={targetHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-blue-600 truncate max-w-full mt-0.5"
+                        >
+                          <span className="truncate">
+                            {extractDisplayHost(
+                              qr.content_data?.type === 'url' ? qr.content_data.url : ''
+                            )}
+                          </span>
+                          <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                        </a>
+                      )}
 
                       <p className="text-[11px] text-zinc-400 mt-2">
                         Diperbarui:{' '}

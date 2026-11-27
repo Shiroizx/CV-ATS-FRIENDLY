@@ -266,15 +266,104 @@ export async function shrinkLogoDataUrl(dataUrl: string, maxChars = 24000): Prom
 }
 
 /**
+ * Membaca File menjadi raw Data URL sebelum dipotong/dikompres.
+ */
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Membaca file logo unggahan menjadi data URL yang ringkas & bebas masalah CORS saat ekspor.
  */
 export async function convertLogoFileToDataUrl(file: File): Promise<string> {
-  const rawDataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Gagal membaca file logo.'));
-    reader.readAsDataURL(file);
+  const rawDataUrl = await readFileAsDataUrl(file);
+  return shrinkLogoDataUrl(rawDataUrl, 24000);
+}
+
+export interface VCardImageTransformOptions {
+  zoom: number;
+  flipH: boolean;
+  flipV: boolean;
+  rotateDeg: number;
+  squareCrop?: boolean;
+  maxChars?: number;
+}
+
+/**
+ * Menerapkan zoom, balik (flip), putar (rotate), lalu mengompres gambar profil/splash vCard
+ * agar ringan disimpan di JSONB (<= 18 KB per gambar).
+ */
+export async function processVCardImageDataUrl(
+  rawDataUrl: string,
+  opts: VCardImageTransformOptions
+): Promise<string> {
+  const maxChars = opts.maxChars ?? 18000;
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('File gambar tidak dapat diproses.'));
+    el.src = rawDataUrl;
   });
 
-  return shrinkLogoDataUrl(rawDataUrl, 24000);
+  const srcW = img.naturalWidth || img.width || 240;
+  const srcH = img.naturalHeight || img.height || 240;
+  const normalizedRot = ((opts.rotateDeg % 360) + 360) % 360;
+  const swapped = normalizedRot === 90 || normalizedRot === 270;
+  const baseW = swapped ? srcH : srcW;
+  const baseH = swapped ? srcW : srcH;
+
+  const attempts = [
+    { maxSide: 280, mime: 'image/webp', quality: 0.84 },
+    { maxSide: 220, mime: 'image/webp', quality: 0.76 },
+    { maxSide: 180, mime: 'image/jpeg', quality: 0.72 },
+    { maxSide: 140, mime: 'image/jpeg', quality: 0.65 },
+  ];
+
+  let latest = rawDataUrl;
+  for (const cfg of attempts) {
+    const canvas = document.createElement('canvas');
+    if (opts.squareCrop) {
+      canvas.width = cfg.maxSide;
+      canvas.height = cfg.maxSide;
+    } else {
+      const ratio = Math.min(1, cfg.maxSide / Math.max(baseW, baseH));
+      canvas.width = Math.max(1, Math.round(baseW * ratio));
+      canvas.height = Math.max(1, Math.round(baseH * ratio));
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) break;
+
+    if (cfg.mime === 'image/jpeg') {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(opts.flipH ? -1 : 1, opts.flipV ? -1 : 1);
+    ctx.rotate((normalizedRot * Math.PI) / 180);
+
+    const coverScale = opts.squareCrop
+      ? Math.max(canvas.width / baseW, canvas.height / baseH)
+      : Math.min(canvas.width / baseW, canvas.height / baseH);
+    const finalScale = coverScale * Math.max(1, opts.zoom);
+
+    const drawW = srcW * finalScale;
+    const drawH = srcH * finalScale;
+    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+
+    latest = canvas.toDataURL(cfg.mime, cfg.quality);
+    if (latest.length <= maxChars) {
+      return latest;
+    }
+  }
+
+  return latest;
 }

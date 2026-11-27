@@ -6,12 +6,18 @@ import {
   sanitizeExternalUrl,
   extractDisplayHost,
   validateUrlQRForm,
+  validateVCardQRForm,
+  generateVCardVcfString,
   resolveUrlQRPayload,
   checkQRScannability,
   validateLogoFileMeta,
   generateShortCode,
 } from '../src/lib/qrHelpers.ts';
-import { DEFAULT_QR_STYLE, INITIAL_URL_CONTENT } from '../src/types/qrGenerator.ts';
+import {
+  DEFAULT_QR_STYLE,
+  INITIAL_URL_CONTENT,
+  INITIAL_VCARD_CONTENT,
+} from '../src/types/qrGenerator.ts';
 
 test('URL normalization, domain validation, and XSS blocking', () => {
   assert.equal(normalizeUrl('www.mywebsite.com'), 'https://www.mywebsite.com');
@@ -89,4 +95,60 @@ test('Logo file validator accepts PNG/JPG/SVG <= 5MB and rejects >5MB or PDF', (
 test('generateShortCode returns alphanumeric 8-char tokens', () => {
   const code = generateShortCode(8);
   assert.match(code, /^[A-Za-z0-9]{8}$/);
+});
+
+test('validateVCardQRForm enforces fullName and validates optional website/email/socials', () => {
+  const emptyRes = validateVCardQRForm(INITIAL_VCARD_CONTENT, { enabled: false, password: '' });
+  assert.equal(emptyRes.isValid, false);
+  assert.ok(emptyRes.errors.fullName);
+
+  const validRes = validateVCardQRForm(
+    {
+      ...INITIAL_VCARD_CONTENT,
+      fullName: 'Adlildzil Arifah',
+      website: 'adlzil.engineer',
+      emails: [{ id: 'e1', label: 'Lainnya', email: '19230602@bsi.ac.id' }],
+    },
+    { enabled: false, password: '' }
+  );
+  assert.equal(validRes.isValid, true);
+
+  const badEmailRes = validateVCardQRForm(
+    {
+      ...INITIAL_VCARD_CONTENT,
+      fullName: 'Adlildzil Arifah',
+      emails: [{ id: 'e1', label: 'Kerja', email: 'bukan-email' }],
+    },
+    { enabled: false, password: '' }
+  );
+  assert.equal(badEmailRes.isValid, false);
+  assert.ok(badEmailRes.errors.emails);
+});
+
+test('generateVCardVcfString produces standard vCard 3.0 payload', () => {
+  const vcf = generateVCardVcfString({
+    ...INITIAL_VCARD_CONTENT,
+    fullName: 'Adlildzil Arifah',
+    phones: [{ id: 'p1', label: 'Cara Kerja', number: '+6285156693650' }],
+    emails: [{ id: 'e1', label: 'Kerja', email: 'test@example.com' }],
+    company: 'nara institute',
+    profession: 'Software Engineer',
+    website: 'adlzil.engineer',
+    street: 'Muncang',
+    city: 'Jakarta Utara',
+    state: 'DKI Jakarta',
+    postalCode: '14270',
+    country: 'Indonesia',
+    summary: 'Halo semua',
+  });
+  assert.match(vcf, /^BEGIN:VCARD/);
+  assert.match(vcf, /VERSION:3\.0/);
+  assert.match(vcf, /FN:Adlildzil Arifah/);
+  assert.match(vcf, /ORG:nara institute/);
+  assert.match(vcf, /TITLE:Software Engineer/);
+  assert.match(vcf, /TEL;TYPE=WORK,VOICE:\+6285156693650/);
+  assert.match(vcf, /EMAIL;TYPE=WORK:test@example\.com/);
+  assert.match(vcf, /URL:https:\/\/adlzil\.engineer/);
+  assert.match(vcf, /ADR;TYPE=WORK:;;Muncang;Jakarta Utara;DKI Jakarta;14270;Indonesia/);
+  assert.match(vcf, /END:VCARD$/);
 });

@@ -41,7 +41,7 @@ export const QR_TYPES: readonly QRTypeConfig[] = [
     label: 'vCard',
     description: 'Bagikan kartu nama elektronik',
     icon: 'Contact',
-    available: false,
+    available: true,
   },
   {
     id: 'pdf',
@@ -93,7 +93,72 @@ export interface UrlContent {
   qrName: string;
 }
 
-export type QRContentData = UrlContent;
+export type VCardPhoneLabel = 'Cara Kerja' | 'Ponsel' | 'Rumah' | 'Faks' | 'Lainnya';
+export type VCardEmailLabel = 'Kerja' | 'Pribadi' | 'Lainnya';
+
+export interface VCardPhoneItem {
+  id: string;
+  label: VCardPhoneLabel;
+  number: string;
+}
+
+export interface VCardEmailItem {
+  id: string;
+  label: VCardEmailLabel;
+  email: string;
+}
+
+export interface VCardSocialItem {
+  id: string;
+  platform: string;
+  url: string;
+  label: string;
+}
+
+export interface VCardContent {
+  type: 'vcard';
+  qrName: string;
+  primaryColor: string;
+  secondaryColor: string;
+  fullName: string;
+  avatarDataUrl: string | null;
+  avatarFileName: string;
+  phones: VCardPhoneItem[];
+  website: string;
+  emails: VCardEmailItem[];
+  company: string;
+  profession: string;
+  summary: string;
+  addressMode: 'manual' | 'url';
+  street: string;
+  postalCode: string;
+  city: string;
+  state: string;
+  country: string;
+  addressUrl: string;
+  socials: VCardSocialItem[];
+  splashDataUrl: string | null;
+  splashFileName: string;
+}
+
+export type QRContentData = UrlContent | VCardContent;
+
+export interface VCardColorScheme {
+  id: string;
+  primary: string;
+  secondary: string;
+  label: string;
+}
+
+export const VCARD_COLOR_SCHEMES: readonly VCardColorScheme[] = [
+  { id: 'blue-white', primary: '#6594FF', secondary: '#FFFFFF', label: 'Biru & Putih' },
+  { id: 'slate-dark', primary: '#E8EBF2', secondary: '#111827', label: 'Abu & Hitam' },
+  { id: 'slate-blue', primary: '#E8EBF2', secondary: '#5F8FFF', label: 'Abu & Biru' },
+  { id: 'sky-blue', primary: '#D8EAF9', secondary: '#5F8FFF', label: 'Biru Langit' },
+  { id: 'lavender-white', primary: '#B39DDB', secondary: '#FFFFFF', label: 'Ungu & Putih' },
+  { id: 'mint-dark', primary: '#6BD09D', secondary: '#18181B', label: 'Mint & Hitam' },
+  { id: 'gold-white', primary: '#F9C963', secondary: '#FFFFFF', label: 'Kuning & Putih' },
+] as const;
 
 export type QRDotType =
   | 'square'
@@ -199,4 +264,30 @@ export const INITIAL_URL_CONTENT: UrlContent = {
   type: 'url',
   url: '',
   qrName: '',
+};
+
+export const INITIAL_VCARD_CONTENT: VCardContent = {
+  type: 'vcard',
+  qrName: '',
+  primaryColor: '#6594FF',
+  secondaryColor: '#FFFFFF',
+  fullName: '',
+  avatarDataUrl: null,
+  avatarFileName: '',
+  phones: [{ id: 'phone-1', label: 'Cara Kerja', number: '' }],
+  website: '',
+  emails: [{ id: 'email-1', label: 'Lainnya', email: '' }],
+  company: '',
+  profession: '',
+  summary: '',
+  addressMode: 'manual',
+  street: '',
+  postalCode: '',
+  city: '',
+  state: '',
+  country: '',
+  addressUrl: '',
+  socials: [],
+  splashDataUrl: null,
+  splashFileName: '',
 };

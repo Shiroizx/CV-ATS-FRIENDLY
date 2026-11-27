@@ -39,7 +39,7 @@ export default function QRTypeSelector({
     if (!available) {
       void showToast(
         'info',
-        `Tipe "${label}" akan hadir pada tahap pengembangan berikutnya. Untuk saat ini gunakan URL Situs Web.`
+        `Tipe "${label}" akan hadir pada tahap pengembangan berikutnya. Untuk saat ini tersedia URL Situs Web dan vCard.`
       );
       return;
     }
