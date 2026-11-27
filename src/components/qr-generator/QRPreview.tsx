@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Battery,
   Check,
   Download,
   ExternalLink,
@@ -9,7 +8,6 @@ import {
   Info,
   Lock,
   QrCode,
-  Wifi,
 } from 'lucide-react';
 import type {
   QRContentData,
@@ -19,15 +17,15 @@ import type {
 } from '../../types/qrGenerator';
 import {
   buildWatermarkTileDataUrl,
-  calculateRelativeLuminance,
   extractDisplayHost,
   getQRDisplayTitle,
   sanitizeExternalUrl,
 } from '../../lib/qrHelpers';
 import type { DownloadCreditInfo } from '../../lib/downloadCredit';
 import FramedQRCanvas from './FramedQRCanvas';
+import IPhone18ProMaxMockup from './IPhone18ProMaxMockup';
 import QRTypeHoverPreview from './QRTypeHoverPreview';
-import VCardMobileView, { VCardSplashOverlay } from './VCardMobileView';
+import VCardMobileView from './VCardMobileView';
 
 interface QRPreviewProps {
   step: WizardStep;
@@ -102,8 +100,11 @@ export default function QRPreview({
     /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(content.primaryColor)
       ? content.primaryColor
       : '#6594FF';
-  const vcardStatusLightText =
-    isVCardPreviewTab && calculateRelativeLuminance(vcardHeroPrimary) <= 0.55;
+  const vcardBottomBg =
+    content.type === 'vcard' &&
+    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(content.secondaryColor)
+      ? content.secondaryColor
+      : '#FFFFFF';
   const isPhoneWatermarkVisible = Boolean(showWatermark && step > 1 && tab === 'qr');
   const phoneWatermarkUrl = useMemo(
     () => (isPhoneWatermarkVisible ? buildWatermarkTileDataUrl(false) : ''),
@@ -142,24 +143,19 @@ export default function QRPreview({
         </div>
       )}
 
-      {/* iPhone Mockup Frame */}
-      <div className="relative w-[290px] sm:w-[308px] rounded-[46px] bg-zinc-950 p-[11px] shadow-2xl border border-zinc-800">
-        {/* Tombol samping fisik mockup */}
-        <span className="hidden sm:block absolute -left-1 top-24 w-1 h-8 bg-zinc-800 rounded-l" />
-        <span className="hidden sm:block absolute -left-1 top-36 w-1 h-12 bg-zinc-800 rounded-l" />
-        <span className="hidden sm:block absolute -right-1 top-32 w-1 h-14 bg-zinc-800 rounded-r" />
-
-        <div className="relative bg-white rounded-[36px] overflow-hidden min-h-[545px] flex flex-col">
-          {content.type === 'vcard' && step > 1 && (
-            <VCardSplashOverlay
-              visible={showingVCardSplash && tab === 'preview'}
-              imageUrl={content.splashDataUrl}
-              onDismiss={() => setShowingVCardSplash(false)}
-              fadeBackdropIn
-            />
-          )}
-
-          {isPhoneWatermarkVisible && (
+      {/* iPhone 18 Pro Max Mockup Frame */}
+      <IPhone18ProMaxMockup
+        exactSize={false}
+        statusBarBg={isVCardPreviewTab ? vcardHeroPrimary : undefined}
+        bottomBg={isVCardPreviewTab ? vcardBottomBg : '#FFFFFF'}
+        splashVisible={Boolean(
+          content.type === 'vcard' && step > 1 && showingVCardSplash && tab === 'preview'
+        )}
+        splashImageUrl={content.type === 'vcard' ? content.splashDataUrl : null}
+        fadeSplashBackdropIn
+        onDismissSplash={() => setShowingVCardSplash(false)}
+        backgroundOverlay={
+          isPhoneWatermarkVisible ? (
             <div
               aria-hidden="true"
               className="absolute inset-0 z-[1] pointer-events-none select-none"
@@ -169,80 +165,55 @@ export default function QRPreview({
                 backgroundSize: '185px 126px',
               }}
             />
-          )}
-
-          {/* Status bar & Dynamic Island */}
-          <div
-            className={`relative z-30 px-6 pt-3 pb-2 flex items-center justify-between text-[11px] font-bold transition-colors duration-300 ${
-              showingVCardSplash && tab === 'preview'
-                ? 'text-zinc-900'
-                : vcardStatusLightText
-                  ? 'text-white'
-                  : 'text-zinc-900'
-            }`}
-            style={
-              isVCardPreviewTab && !(showingVCardSplash && tab === 'preview')
-                ? { backgroundColor: vcardHeroPrimary }
-                : undefined
-            }
-          >
-            <span>18:45</span>
-            <div className="w-20 h-5 bg-zinc-950 rounded-full mx-auto" />
-            <div className="flex items-center gap-1.5">
-              <Wifi className="w-3 h-3" />
-              <Battery className="w-3.5 h-3.5" />
-            </div>
-          </div>
-
-          {step === 1 ? (
-            hoveredType ? (
-              <QRTypeHoverPreview type={hoveredType} />
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10 text-center">
-                <div className="w-40 h-40 rounded-2xl border border-zinc-100 shadow-lg bg-white flex items-center justify-center p-4 mb-6">
-                  <div className="relative w-full h-full grid grid-cols-3 gap-1.5 opacity-25">
-                    <div className="border-4 border-zinc-900 rounded-sm" />
-                    <div className="bg-zinc-900/60 rounded-xs" />
-                    <div className="border-4 border-zinc-900 rounded-sm" />
-                    <div className="bg-zinc-900/60 rounded-xs" />
-                    <div className="bg-zinc-900/20 rounded-xs" />
-                    <div className="bg-zinc-900/60 rounded-xs" />
-                    <div className="border-4 border-zinc-900 rounded-sm" />
-                    <div className="bg-zinc-900/60 rounded-xs" />
-                    <div className="bg-zinc-900/40 rounded-xs" />
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-extrabold tracking-widest text-zinc-900">
-                      LOGO
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-zinc-500 max-w-[22ch] leading-relaxed">
-                  Pilih atau arahkan kursor ke jenis Kode QR di sebelah kiri
-                </p>
-              </div>
-            )
+          ) : null
+        }
+      >
+        {step === 1 ? (
+          hoveredType ? (
+            <QRTypeHoverPreview type={hoveredType} />
           ) : (
-            <div className="relative z-10 flex-1 flex flex-col">
-              {/* Mini browser address bar inside phone (hanya untuk URL atau tab Kode QR) */}
-              {!isVCardPreviewTab && (
-                <div className="px-4 pb-3">
-                  <div className="bg-zinc-100/90 backdrop-blur-xs rounded-full px-3 py-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-zinc-600 truncate">
-                    {passwordEnabled ? (
-                      <Lock className="w-3 h-3 text-amber-600 flex-shrink-0" />
-                    ) : (
-                      <Globe className="w-3 h-3 text-zinc-500 flex-shrink-0" />
-                    )}
-                    <span className="truncate">{displayHost}</span>
-                  </div>
+            <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10 text-center">
+              <div className="w-40 h-40 rounded-2xl border border-zinc-100 shadow-lg bg-white flex items-center justify-center p-4 mb-6">
+                <div className="relative w-full h-full grid grid-cols-3 gap-1.5 opacity-25">
+                  <div className="border-4 border-zinc-900 rounded-sm" />
+                  <div className="bg-zinc-900/60 rounded-xs" />
+                  <div className="border-4 border-zinc-900 rounded-sm" />
+                  <div className="bg-zinc-900/60 rounded-xs" />
+                  <div className="bg-zinc-900/20 rounded-xs" />
+                  <div className="bg-zinc-900/60 rounded-xs" />
+                  <div className="border-4 border-zinc-900 rounded-sm" />
+                  <div className="bg-zinc-900/60 rounded-xs" />
+                  <div className="bg-zinc-900/40 rounded-xs" />
+                  <span className="absolute inset-0 flex items-center justify-center text-xs font-extrabold tracking-widest text-zinc-900">
+                    LOGO
+                  </span>
                 </div>
-              )}
+              </div>
+              <p className="text-sm text-zinc-500 max-w-[22ch] leading-relaxed">
+                Pilih atau arahkan kursor ke jenis Kode QR di sebelah kiri
+              </p>
+            </div>
+          )
+        ) : (
+          <div className="relative z-10 flex-1 flex flex-col">
+            {/* Mini browser address bar inside phone (hanya untuk URL atau tab Kode QR) */}
+            {!isVCardPreviewTab && (
+              <div className="px-4 pb-3">
+                <div className="bg-zinc-100/90 backdrop-blur-xs rounded-full px-3 py-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-zinc-600 truncate">
+                  {passwordEnabled ? (
+                    <Lock className="w-3 h-3 text-amber-600 flex-shrink-0" />
+                  ) : (
+                    <Globe className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                  )}
+                  <span className="truncate">{displayHost}</span>
+                </div>
+              </div>
+            )}
 
-              {tab === 'preview' ? (
-                content.type === 'vcard' ? (
-                  <VCardMobileView
-                    content={content}
-                    compact
-                  />
-                ) : (
+            {tab === 'preview' ? (
+              content.type === 'vcard' ? (
+                <VCardMobileView content={content} compact />
+              ) : (
                 /* Pratinjau halaman tujuan (sesuai screenshot image.png) */
                 <div className="flex-1 bg-indigo-100/70 p-3 flex flex-col gap-3">
                   <div className="bg-white rounded-2xl p-3.5 shadow-2xs space-y-3">
@@ -285,32 +256,31 @@ export default function QRPreview({
                     <div className="mt-auto w-full h-9 rounded-xl bg-indigo-300/70" />
                   )}
                 </div>
-                )
-              ) : (
-                /* Kode QR Live Preview */
-                <div className="flex-1 flex flex-col items-center justify-center px-5 pb-6">
-                  <FramedQRCanvas
-                    data={qrPayload}
-                    style={style}
-                    resolution={560}
-                    showWatermark={showWatermark}
-                    className="w-full max-w-[235px] pointer-events-none"
-                  />
-                  <p className="text-[11px] font-medium text-zinc-500 mt-4 text-center leading-relaxed">
-                    {!isActivated
-                      ? 'Belum diaktifkan — klik Simpan atau Unduh untuk mengaktifkan QR Code Anda'
-                      : showWatermark
-                        ? 'Unduh QR untuk menghilangkan watermark pratinjau'
-                        : passwordEnabled
-                          ? 'QR aktif • pemindaian melewati gerbang sandi terlebih dahulu'
-                          : 'QR aktif • siap dipindai kamera HP'}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+              )
+            ) : (
+              /* Kode QR Live Preview */
+              <div className="flex-1 flex flex-col items-center justify-center px-5 pb-6">
+                <FramedQRCanvas
+                  data={qrPayload}
+                  style={style}
+                  resolution={560}
+                  showWatermark={showWatermark}
+                  className="w-full max-w-[235px] pointer-events-none"
+                />
+                <p className="text-[11px] font-medium text-zinc-500 mt-4 text-center leading-relaxed">
+                  {!isActivated
+                    ? 'Belum diaktifkan — klik Simpan atau Unduh untuk mengaktifkan QR Code Anda'
+                    : showWatermark
+                      ? 'Unduh QR untuk menghilangkan watermark pratinjau'
+                      : passwordEnabled
+                        ? 'QR aktif • pemindaian melewati gerbang sandi terlebih dahulu'
+                        : 'QR aktif • siap dipindai kamera HP'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </IPhone18ProMaxMockup>
 
       {/* Status Simpan & Aksi Ekspor saat Step 3 */}
       {step === 3 && (

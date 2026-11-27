@@ -13,10 +13,31 @@ import {
 import { getPublicQRByCode, verifyPublicQRPassword } from '../lib/qrService';
 import { extractDisplayHost, sanitizeExternalUrl } from '../lib/qrHelpers';
 import type { VCardContent } from '../types/qrGenerator';
-import VCardMobileView from '../components/qr-generator/VCardMobileView';
+import IPhone18ProMaxMockup from '../components/qr-generator/IPhone18ProMaxMockup';
+import VCardMobileView, {
+  VCardSplashOverlay,
+} from '../components/qr-generator/VCardMobileView';
+
+function useIsDesktopSm(): boolean {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(min-width: 640px)').matches
+      : true
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 640px)');
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+
+  return isDesktop;
+}
 
 export default function PublicQRViewerPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
+  const isDesktop = useIsDesktopSm();
   const [loading, setLoading] = useState(Boolean(shortCode));
   const [isNotActivated, setIsNotActivated] = useState(!shortCode);
   const [errorMsg, setErrorMsg] = useState('');
@@ -24,6 +45,7 @@ export default function PublicQRViewerPage() {
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [unlockedUrl, setUnlockedUrl] = useState<string | null>(null);
   const [vcardContent, setVcardContent] = useState<VCardContent | null>(null);
+  const [splashVisible, setSplashVisible] = useState(false);
 
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -56,6 +78,9 @@ export default function PublicQRViewerPage() {
         setRequiresPassword(true);
       } else if (data.content_data?.type === 'vcard') {
         setVcardContent(data.content_data);
+        if (data.content_data.splashDataUrl) {
+          setSplashVisible(true);
+        }
       } else if (data.content_data?.type === 'url' && data.content_data.url) {
         const safe = sanitizeExternalUrl(data.content_data.url);
         setUnlockedUrl(safe);
@@ -69,6 +94,12 @@ export default function PublicQRViewerPage() {
       cancelled = true;
     };
   }, [shortCode]);
+
+  useEffect(() => {
+    if (!splashVisible) return;
+    const timer = setTimeout(() => setSplashVisible(false), 1650);
+    return () => clearTimeout(timer);
+  }, [splashVisible]);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +125,9 @@ export default function PublicQRViewerPage() {
 
     if (res.content_data.type === 'vcard') {
       setVcardContent(res.content_data);
+      if (res.content_data.splashDataUrl) {
+        setSplashVisible(true);
+      }
       setRequiresPassword(false);
       return;
     }
@@ -107,24 +141,56 @@ export default function PublicQRViewerPage() {
   };
 
   if (vcardContent) {
-    return (
-      <div className="min-h-dvh bg-white sm:bg-[#f7f9fc] flex flex-col items-center sm:justify-center sm:p-6 sm:py-10">
-        <div className="w-full flex-1 sm:flex-none sm:max-w-md bg-white sm:rounded-[32px] sm:border sm:border-zinc-200 sm:shadow-xl overflow-hidden flex flex-col sm:min-h-[640px]">
-          <VCardMobileView
-            content={vcardContent}
-            playSplashOnMount
-            compact={false}
-            footerNote={
-              <Link
-                to="/"
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-5 pb-1"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                Dibuat dengan FreeBuild CV
-              </Link>
-            }
-          />
+    const footerLink = (
+      <Link
+        to="/"
+        className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-5 pb-1"
+      >
+        <QrCode className="w-3.5 h-3.5" />
+        Dibuat dengan FreeBuild CV
+      </Link>
+    );
+
+    if (isDesktop) {
+      return (
+        <div className="min-h-screen bg-[#f7f9fc] flex flex-col items-center justify-center py-8 px-4 overflow-x-auto">
+          <IPhone18ProMaxMockup
+            exactSize
+            statusBarBg={vcardContent.primaryColor}
+            bottomBg={vcardContent.secondaryColor}
+            splashVisible={splashVisible}
+            splashImageUrl={vcardContent.splashDataUrl}
+            fadeSplashBackdropIn={false}
+            onDismissSplash={() => setSplashVisible(false)}
+          >
+            <VCardMobileView
+              content={vcardContent}
+              playSplashOnMount={false}
+              compact={false}
+              footerNote={footerLink}
+            />
+          </IPhone18ProMaxMockup>
         </div>
+      );
+    }
+
+    return (
+      <div className="min-h-dvh bg-white flex flex-col w-full">
+        {vcardContent.splashDataUrl && (
+          <VCardSplashOverlay
+            visible={splashVisible}
+            imageUrl={vcardContent.splashDataUrl}
+            onDismiss={() => setSplashVisible(false)}
+            fadeBackdropIn={false}
+            fullScreen
+          />
+        )}
+        <VCardMobileView
+          content={vcardContent}
+          playSplashOnMount={false}
+          compact={false}
+          footerNote={footerLink}
+        />
       </div>
     );
   }
