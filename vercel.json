@@ -1,6 +1,28 @@
 {
     "rewrites": [
         {
+            "source": "/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "user-agent",
+                    "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Line|Applebot|Pinterest|Embedly|SkypeUriPreview|Viber).*"
+                }
+            ],
+            "destination": "/api/og-preview"
+        },
+        {
+            "source": "/q/:slug",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "user-agent",
+                    "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Line|Applebot|Pinterest|Embedly|SkypeUriPreview|Viber).*"
+                }
+            ],
+            "destination": "/api/og-preview?slug=:slug"
+        },
+        {
             "source": "/((?!api/).*)",
             "destination": "/index.html"
         }

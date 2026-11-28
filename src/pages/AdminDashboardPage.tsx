@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Users, Plus, Pencil, Trash2, Search, ArrowLeft, Loader2, ShieldAlert, Globe, RefreshCw, Settings, BarChart3 } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Search, ArrowLeft, Loader2, ShieldAlert, Globe, RefreshCw, Settings, BarChart3, QrCode } from "lucide-react";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { getDownloadLimits } from "../lib/downloadCredit";
+import AdminQRDomainsTab from "../components/AdminQRDomainsTab";
 
 interface AppUser {
     id: string;
@@ -29,7 +30,7 @@ export default function AdminDashboardPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [activeTab, setActiveTab] = useState<"users" | "guests" | "settings">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "guests" | "domains" | "settings">("users");
 
     // Limits state
     const [limits, setLimits] = useState({ guest: 3, user: 6 });
@@ -85,7 +86,7 @@ export default function AdminDashboardPage() {
             fetchUsers();
         } else if (activeTab === "guests") {
             fetchGuests();
-        } else {
+        } else if (activeTab === "settings") {
             fetchSettings();
         }
     }, [activeTab]);
@@ -331,6 +332,13 @@ export default function AdminDashboardPage() {
                             Guest Downloads
                         </button>
                         <button
+                            onClick={() => { setActiveTab("domains"); setSearchQuery(""); }}
+                            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === "domains" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
+                        >
+                            <QrCode className="w-4 h-4" />
+                            QR &amp; Domains
+                        </button>
+                        <button
                             onClick={() => { setActiveTab("settings"); setSearchQuery(""); }}
                             className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === "settings" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
                         >
@@ -349,7 +357,7 @@ export default function AdminDashboardPage() {
             </header>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {activeTab !== "settings" && (
+                {activeTab !== "settings" && activeTab !== "domains" && (
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                         <div className="bg-blue-50 text-blue-700 px-4 py-3 rounded-lg flex items-center gap-3">
                             {activeTab === "users" ? <Users className="w-5 h-5" /> : <Globe className="w-5 h-5" />}
@@ -371,7 +379,9 @@ export default function AdminDashboardPage() {
                     </div>
                 )}
 
-                {activeTab === "settings" ? (
+                {activeTab === "domains" ? (
+                    <AdminQRDomainsTab />
+                ) : activeTab === "settings" ? (
                     <div className="max-w-2xl bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-6 animate-fadeIn">
                         <div className="mb-6">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
