@@ -32,8 +32,7 @@ function isValidSubdomain(slug: string): boolean {
 
 function sanitizeContentSummary(
   qrType: string,
-  contentData: Record<string, unknown> | null | undefined,
-  destinationUrl: string | null | undefined
+  contentData: Record<string, unknown> | null | undefined
 ): Record<string, unknown> {
   const c = contentData || {};
   if (qrType === 'vcard') {
@@ -64,7 +63,7 @@ function sanitizeContentSummary(
     };
   }
   return {
-    url: typeof c.url === 'string' ? c.url : destinationUrl || '',
+    url: typeof c.url === 'string' ? c.url : '',
   };
 }
 
@@ -108,7 +107,7 @@ export async function GET(request: Request): Promise<Response> {
       supabaseAdmin
         .from('qr_codes')
         .select(
-          'id, user_id, title, qr_type, short_code, public_domain, org_slug, external_owner_ref, destination_url, content_data, is_active, scan_count, created_at, updated_at'
+          'id, user_id, title, qr_type, short_code, public_domain, org_slug, external_owner_ref, content_data, is_active, scan_count, created_at, updated_at'
         )
         .order('updated_at', { ascending: false })
         .limit(500),
@@ -156,11 +155,13 @@ export async function GET(request: Request): Promise<Response> {
         live_url: `https://${row.short_code.toLowerCase()}.${domain}`,
         org_slug: row.org_slug || null,
         external_owner_ref: row.external_owner_ref || null,
-        destination_url: row.destination_url || null,
+        destination_url:
+          typeof (row.content_data as Record<string, unknown> | null)?.url === 'string'
+            ? String((row.content_data as Record<string, unknown>).url)
+            : null,
         content_summary: sanitizeContentSummary(
           row.qr_type,
-          row.content_data as Record<string, unknown> | null,
-          row.destination_url
+          row.content_data as Record<string, unknown> | null
         ),
         is_active: Boolean(row.is_active),
         scan_count: Number(row.scan_count || 0),
@@ -294,12 +295,6 @@ export async function PATCH(request: Request): Promise<Response> {
         : existing.title;
     const nextIsActive =
       typeof body?.is_active === 'boolean' ? body.is_active : Boolean(existing.is_active);
-    const nextDestinationUrl =
-      existing.qr_type === 'url' && typeof patch.url === 'string'
-        ? patch.url.trim()
-        : body?.destination_url !== undefined
-          ? body.destination_url
-          : existing.destination_url;
     const nextOrgSlug =
       nextDomain === 'narainstitute.net' ? 'narainstitute' : existing.org_slug;
 
@@ -311,7 +306,6 @@ export async function PATCH(request: Request): Promise<Response> {
         public_domain: nextDomain,
         org_slug: nextOrgSlug,
         is_active: nextIsActive,
-        destination_url: nextDestinationUrl,
         content_data: mergedContent,
       })
       .eq('id', id)
