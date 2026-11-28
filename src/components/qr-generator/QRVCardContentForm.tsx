@@ -1,9 +1,6 @@
 import { useRef, useState } from 'react';
-import type { ChangeEvent, ReactNode, RefObject } from 'react';
+import type { ChangeEvent } from 'react';
 import {
-  ArrowLeftRight,
-  ChevronRight,
-  Eye,
   FlipHorizontal2,
   ImagePlus,
   Paintbrush,
@@ -13,12 +10,12 @@ import {
   Shuffle,
   Sparkles,
   Trash2,
-  Upload,
   User,
   Waves,
 } from 'lucide-react';
 import {
   VCARD_COLOR_SCHEMES,
+  DEFAULT_VCARD_BRUTALISM_PALETTE,
   INITIAL_VCARD_CONTENT,
   DEFAULT_VCARD_BANNER_WAVE,
 } from '../../types/qrGenerator';
@@ -30,13 +27,19 @@ import type {
   VCardPhoneLabel,
 } from '../../types/qrGenerator';
 import {
-  VCARD_SOCIAL_PLATFORMS,
-  getSocialPlatformMeta,
-} from '../../lib/qrPresets';
-import { validateLogoFileMeta } from '../../lib/qrHelpers';
+  createRowId,
+  resolveVCardBrutalismPalette,
+  validateLogoFileMeta,
+} from '../../lib/qrHelpers';
 import { readFileAsDataUrl } from '../../lib/qrExport';
 import { showError } from '../../utils/swal';
 import QRImageEditorModal from './QRImageEditorModal';
+import {
+  ImagePickerField as VCardImagePickerField,
+  QRDesignStyleSection,
+  SocialNetworksField,
+  SubAccordion,
+} from './QRFormPrimitives';
 import QRVCardExtraSectionsEditor, {
   QRVCardSectionCard as TopAccordionCard,
 } from './QRVCardExtraSectionsEditor';
@@ -71,196 +74,8 @@ const EMAIL_LABELS: readonly VCardEmailLabel[] = [
   'Lainnya',
 ];
 
-function SubAccordion({
-  title,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-xl bg-zinc-50/80 border border-zinc-200/70 overflow-hidden">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full px-4 py-3.5 flex items-center gap-2.5 text-left hover:bg-zinc-100/70 transition-colors cursor-pointer"
-      >
-        <ChevronRight
-          className={`w-4 h-4 text-zinc-700 transition-transform duration-150 ${
-            open ? 'rotate-90' : ''
-          }`}
-        />
-        <span className="text-sm font-bold text-zinc-900">{title}</span>
-      </button>
-      {open && (
-        <div className="px-4 pb-4 pt-2 border-t border-zinc-200/60 bg-white space-y-4">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ColorHexPicker({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (hex: string) => void;
-}) {
-  const safeHex = /^#([0-9a-fA-F]{6})$/.test(value) ? value : '#6594FF';
-  return (
-    <div className="flex-1 min-w-0">
-      <label className="block text-xs sm:text-sm font-bold text-zinc-800 mb-2">
-        {label}
-      </label>
-      <div className="flex items-center justify-between bg-white border border-zinc-200 rounded-xl px-3.5 py-2.5 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/15 transition-all">
-        <input
-          type="text"
-          value={value.toUpperCase()}
-          maxLength={7}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full text-sm font-mono text-zinc-800 bg-transparent focus:outline-none"
-        />
-        <label className="relative cursor-pointer flex-shrink-0 ml-2">
-          <span
-            className="block w-6 h-6 rounded-md border border-zinc-300 shadow-2xs"
-            style={{ backgroundColor: safeHex }}
-          />
-          <input
-            type="color"
-            value={safeHex}
-            onChange={(e) => onChange(e.target.value.toUpperCase())}
-            className="sr-only"
-          />
-        </label>
-      </div>
-    </div>
-  );
-}
-
 type AboutSectionKey = 'personal' | 'contact' | 'company' | 'summary' | 'address';
 type VCardImageTarget = 'avatar' | 'banner' | 'splash';
-
-function createRowId(prefix: string): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}`;
-}
-
-function VCardImagePickerField({
-  label,
-  hint,
-  emptyTitle,
-  imageUrl,
-  fileName,
-  fallbackFileName,
-  previewAlt,
-  previewClassName,
-  editTitle,
-  inputRef,
-  onFileChange,
-  onRemove,
-  onPreview,
-}: {
-  label: string;
-  hint?: string;
-  emptyTitle: string;
-  imageUrl: string | null;
-  fileName: string;
-  fallbackFileName: string;
-  previewAlt: string;
-  previewClassName: string;
-  editTitle: string;
-  inputRef: RefObject<HTMLInputElement | null>;
-  onFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  onRemove: () => void;
-  onPreview?: () => void;
-}) {
-  return (
-    <div>
-      <div className="mb-2">
-        <label className="block text-sm font-bold text-zinc-900">{label}</label>
-        {hint && <p className="text-xs text-zinc-500 mt-0.5">{hint}</p>}
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp,image/svg+xml,.jfif"
-        onChange={onFileChange}
-        className="hidden"
-      />
-      {imageUrl ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <img
-              src={imageUrl}
-              alt={previewAlt}
-              className={previewClassName}
-            />
-            <span className="text-sm font-semibold text-zinc-800 truncate">
-              {fileName || fallbackFileName}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {onPreview && (
-              <button
-                type="button"
-                title="Pratinjau layar selamat datang di ponsel"
-                onClick={onPreview}
-                className="p-2.5 rounded-xl border border-blue-300 bg-blue-50/50 text-blue-600 hover:bg-blue-100/70 transition-colors cursor-pointer"
-              >
-                <Eye className="w-4 h-4" />
-              </button>
-            )}
-            <button
-              type="button"
-              title={editTitle}
-              onClick={() => inputRef.current?.click()}
-              className="p-2.5 rounded-xl border border-zinc-200 text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onRemove}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Hapus
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="w-full rounded-xl border-2 border-dashed border-zinc-200 hover:border-blue-400 bg-zinc-50/50 hover:bg-blue-50/30 px-4 py-5 flex items-center justify-between gap-3 transition-all cursor-pointer"
-        >
-          <div className="flex items-center gap-3 text-left">
-            <div className="w-11 h-11 rounded-xl bg-white border border-zinc-200 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <Upload className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-zinc-900">{emptyTitle}</p>
-              <p className="text-xs text-zinc-500">Ukuran maksimum: 5 MB</p>
-            </div>
-          </div>
-          <span className="text-xs font-semibold text-blue-600 flex-shrink-0">
-            Pilih File
-          </span>
-        </button>
-      )}
-    </div>
-  );
-}
 
 export default function QRVCardContentForm({
   content,
@@ -275,7 +90,6 @@ export default function QRVCardContentForm({
     summary: false,
     address: false,
   });
-  const [showMoreSocials, setShowMoreSocials] = useState(false);
 
   const [pendingCrop, setPendingCrop] = useState<{
     target: VCardImageTarget;
@@ -296,6 +110,8 @@ export default function QRVCardContentForm({
     onChange({
       ...INITIAL_VCARD_CONTENT,
       type: 'vcard',
+      designStyle: content.designStyle ?? 'default',
+      brutalismPalette: content.brutalismPalette ?? DEFAULT_VCARD_BRUTALISM_PALETTE,
       qrName: 'Kartu Nama Adlildzil',
       primaryColor: '#6594FF',
       secondaryColor: '#FFFFFF',
@@ -378,26 +194,6 @@ export default function QRVCardContentForm({
     });
   };
 
-  const addSocialPlatform = (platformId: string) => {
-    const meta = getSocialPlatformMeta(platformId);
-    onChange({
-      ...content,
-      socials: [
-        ...content.socials,
-        {
-          id: createRowId('soc'),
-          platform: meta.id,
-          url: meta.defaultUrl,
-          label: meta.defaultText,
-        },
-      ],
-    });
-  };
-
-  const visiblePlatforms = showMoreSocials
-    ? VCARD_SOCIAL_PLATFORMS
-    : VCARD_SOCIAL_PLATFORMS.filter((p) => !p.extra);
-
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -418,70 +214,39 @@ export default function QRVCardContentForm({
       <TopAccordionCard
         icon={<Paintbrush className="w-5 h-5" />}
         title="Desain dan sesuaikan"
-        subtitle="Pilih skema warna"
+        subtitle="Pilih gaya kartu & skema warna"
       >
-        <div className="flex flex-wrap gap-2.5">
-          {VCARD_COLOR_SCHEMES.map((scheme) => {
-            const active =
-              content.primaryColor.toUpperCase() === scheme.primary.toUpperCase() &&
-              content.secondaryColor.toUpperCase() === scheme.secondary.toUpperCase();
-            return (
-              <button
-                key={scheme.id}
-                type="button"
-                title={scheme.label}
-                onClick={() =>
-                  onChange({
-                    ...content,
-                    primaryColor: scheme.primary,
-                    secondaryColor: scheme.secondary,
-                  })
-                }
-                className={`p-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  active
-                    ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/40'
-                    : 'border-zinc-200 hover:border-zinc-300 bg-white'
-                }`}
-              >
-                <span
-                  className="w-7 h-7 rounded-lg border border-zinc-200/70"
-                  style={{ backgroundColor: scheme.primary }}
-                />
-                <span
-                  className="w-7 h-7 rounded-lg border border-zinc-200/70"
-                  style={{ backgroundColor: scheme.secondary }}
-                />
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-end gap-3">
-          <ColorHexPicker
-            label="Warna primer"
-            value={content.primaryColor}
-            onChange={(hex) => onChange({ ...content, primaryColor: hex })}
-          />
-          <button
-            type="button"
-            title="Tukar warna primer dan sekunder"
-            onClick={() =>
-              onChange({
-                ...content,
-                primaryColor: content.secondaryColor,
-                secondaryColor: content.primaryColor,
-              })
-            }
-            className="self-center sm:mb-2 p-2 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/70 transition-colors cursor-pointer"
-          >
-            <ArrowLeftRight className="w-4 h-4" />
-          </button>
-          <ColorHexPicker
-            label="Warna sekunder"
-            value={content.secondaryColor}
-            onChange={(hex) => onChange({ ...content, secondaryColor: hex })}
-          />
-        </div>
+        <QRDesignStyleSection
+          styleHeading="Gaya tampilan vCard"
+          defaultDescription="Modern halus, avatar bulat & gelombang banner"
+          defaultSchemes={VCARD_COLOR_SCHEMES}
+          designStyle={content.designStyle ?? 'default'}
+          primaryColor={content.primaryColor}
+          secondaryColor={content.secondaryColor}
+          brutalismPalette={content.brutalismPalette}
+          onSelectStyle={(nextStyle, ensuredPalette) =>
+            onChange({
+              ...content,
+              designStyle: nextStyle,
+              brutalismPalette:
+                nextStyle === 'brutalism' ? ensuredPalette : content.brutalismPalette,
+            })
+          }
+          onChangeDefaultColors={(nextPrimary, nextSecondary) =>
+            onChange({
+              ...content,
+              primaryColor: nextPrimary,
+              secondaryColor: nextSecondary,
+            })
+          }
+          onChangeBrutalismPalette={(nextPalette) =>
+            onChange({
+              ...content,
+              designStyle: 'brutalism',
+              brutalismPalette: nextPalette,
+            })
+          }
+        />
 
         <div className="pt-2 border-t border-zinc-100 space-y-4">
           <VCardImagePickerField
@@ -505,8 +270,18 @@ export default function QRVCardContentForm({
             }
           />
 
-          {/* Shape Wave pada Banner */}
+          {/* Shape Wave pada Banner (didukung di gaya Default & Brutalism) */}
           {(() => {
+            const isBrutal = (content.designStyle ?? 'default') === 'brutalism';
+            const brutalPalette = resolveVCardBrutalismPalette(
+              content.brutalismPalette
+            );
+            const wavePreviewBg = isBrutal
+              ? brutalPalette.primary
+              : content.primaryColor || '#6594FF';
+            const wavePreviewFill = isBrutal
+              ? brutalPalette.surface
+              : content.secondaryColor || '#FFFFFF';
             const wave: VCardBannerWaveConfig = {
               ...DEFAULT_VCARD_BANNER_WAVE,
               ...(content.bannerWave ?? {}),
@@ -608,12 +383,14 @@ export default function QRVCardContentForm({
                             <div
                               className="relative h-10 w-full overflow-hidden border-b border-zinc-100"
                               style={{
-                                backgroundColor: content.primaryColor || '#6594FF',
+                                backgroundColor: wavePreviewBg,
                               }}
                             >
                               <VCardBannerWaveSvg
                                 wave={{ ...wave, shape: item.id, enabled: true }}
-                                fillColor={content.secondaryColor || '#FFFFFF'}
+                                fillColor={wavePreviewFill}
+                                strokeColor={isBrutal ? brutalPalette.text : undefined}
+                                strokeWidth={1.8}
                                 className="absolute -bottom-px inset-x-0 w-full h-5"
                               />
                             </div>
@@ -1109,117 +886,11 @@ export default function QRVCardContentForm({
         subtitle="Klik ikon di bawah untuk menambahkan saluran media sosial yang ingin ditampilkan"
         defaultOpen={false}
       >
-        <div>
-          <p className="text-xs sm:text-sm font-bold text-zinc-900 mb-3">
-            Tambahkan saluran media sosial
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {visiblePlatforms.map((platform) => {
-              const hasPlatform = content.socials.some(
-                (s) => s.platform === platform.id
-              );
-              return (
-                <button
-                  key={platform.id}
-                  type="button"
-                  title={`Tambah ${platform.label}`}
-                  onClick={() => addSocialPlatform(platform.id)}
-                  className={`w-11 h-11 rounded-xl border flex items-center justify-center p-2 transition-all cursor-pointer ${
-                    hasPlatform
-                      ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-600/15'
-                      : 'border-zinc-200 bg-white hover:border-zinc-300'
-                  }`}
-                >
-                  <img
-                    src={platform.iconDataUrl}
-                    alt={platform.label}
-                    className="w-full h-full object-contain rounded-md"
-                  />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {content.socials.length > 0 && (
-          <div className="space-y-2.5 pt-1">
-            {content.socials.map((item) => {
-              const meta = getSocialPlatformMeta(item.platform);
-              return (
-                <div
-                  key={item.id}
-                  className="bg-zinc-50 border border-zinc-200/70 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-2.5"
-                >
-                  <div className="flex items-center gap-2.5 sm:w-36 flex-shrink-0">
-                    <img
-                      src={meta.iconDataUrl}
-                      alt={meta.label}
-                      className="w-8 h-8 rounded-lg flex-shrink-0"
-                    />
-                    <span className="text-sm font-bold text-zinc-900 truncate">
-                      {meta.label}
-                    </span>
-                  </div>
-
-                  <input
-                    type="url"
-                    value={item.url}
-                    onChange={(e) => {
-                      const updated = content.socials.map((s) =>
-                        s.id === item.id ? { ...s, url: e.target.value } : s
-                      );
-                      onChange({ ...content, socials: updated });
-                    }}
-                    placeholder={meta.defaultUrl}
-                    className="flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-blue-600"
-                  />
-
-                  <div className="flex items-center gap-2 sm:w-44">
-                    <input
-                      type="text"
-                      value={item.label}
-                      onChange={(e) => {
-                        const updated = content.socials.map((s) =>
-                          s.id === item.id ? { ...s, label: e.target.value } : s
-                        );
-                        onChange({ ...content, socials: updated });
-                      }}
-                      placeholder={meta.defaultText}
-                      className="flex-1 min-w-0 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-blue-600"
-                    />
-                    <button
-                      type="button"
-                      title="Hapus tautan"
-                      onClick={() =>
-                        onChange({
-                          ...content,
-                          socials: content.socials.filter((s) => s.id !== item.id),
-                        })
-                      }
-                      className="p-2 rounded-xl border border-zinc-200 bg-white text-zinc-500 hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {errors.socials && (
-              <p className="text-xs font-medium text-red-600">{errors.socials}</p>
-            )}
-          </div>
-        )}
-
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowMoreSocials((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-semibold text-zinc-700 transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            {showMoreSocials ? 'Tampilkan lebih sedikit' : 'Tambahkan lebih banyak'}
-          </button>
-        </div>
+        <SocialNetworksField
+          socials={content.socials}
+          error={errors.socials}
+          onChange={(socials) => onChange({ ...content, socials })}
+        />
       </TopAccordionCard>
 
       {/* Bagian Tambahan (Tautan Pilihan, Keahlian & Ketersediaan, Tata Letak) */}

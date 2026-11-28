@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   Award,
   Briefcase,
@@ -30,47 +30,15 @@ import {
   downloadVCardFile,
   extractDisplayHost,
   formatVCardManualAddress,
-  generateVCardBannerWavePaths,
   normalizeVCardSkills,
+  resolveVCardBrutalismPalette,
   sanitizeExternalUrl,
 } from '../../lib/qrHelpers';
 import { getSocialPlatformMeta } from '../../lib/qrPresets';
+import { VCardBannerWaveSvg } from './VCardBannerWaveSvg';
+import VCardBrutalismView from './VCardBrutalismView';
 
-/**
- * Merender SVG gelombang pemisah bawah banner vCard berdasarkan konfigurasi bentuk & seed acak.
- */
-export function VCardBannerWaveSvg({
-  wave,
-  fillColor,
-  className = '',
-  style,
-}: {
-  wave: VCardBannerWaveConfig;
-  fillColor: string;
-  className?: string;
-  style?: CSSProperties;
-}) {
-  const { backdropLayers, foregroundPath } = generateVCardBannerWavePaths(wave);
-  return (
-    <svg
-      viewBox="0 0 400 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      className={className}
-      style={style}
-    >
-      {backdropLayers.map((layer, idx) => (
-        <path
-          key={idx}
-          d={layer.d}
-          fill={fillColor}
-          fillOpacity={layer.opacity}
-        />
-      ))}
-      <path d={foregroundPath} fill={fillColor} />
-    </svg>
-  );
-}
+export { VCardBannerWaveSvg };
 
 interface VCardSplashOverlayProps {
   visible: boolean;
@@ -122,7 +90,7 @@ export function VCardSplashOverlay({
   );
 }
 
-function VCardAccordionCard({
+export function VCardAccordionCard({
   icon,
   title,
   isOpen,
@@ -292,6 +260,45 @@ export default function VCardMobileView({
   const waveHeightPx = compact
     ? Math.round(28 + bannerWave.height * 0.42)
     : Math.round(38 + bannerWave.height * 0.62);
+
+  if ((content.designStyle ?? 'default') === 'brutalism') {
+    const brutalPalette = resolveVCardBrutalismPalette(content.brutalismPalette);
+    return (
+      <div className="relative flex-1 min-h-0 flex flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {playSplashOnMount && (
+          <VCardSplashOverlay
+            visible={showingSplash}
+            imageUrl={content.splashDataUrl}
+            onDismiss={() => setShowingSplash(false)}
+            fadeBackdropIn={false}
+            fullScreen
+          />
+        )}
+        <VCardBrutalismView
+          content={content}
+          palette={brutalPalette}
+          compact={compact}
+          hasTopMockupBar={hasTopMockupBar}
+          filledPhones={filledPhones}
+          filledEmails={filledEmails}
+          manualAddress={manualAddress}
+          mapHref={mapHref}
+          websiteHref={websiteHref}
+          filledSocials={filledSocials}
+          normalizedSkills={normalizedSkills}
+          availabilityStatus={availabilityStatus}
+          workingHours={workingHours}
+          showShareButton={showShareButton}
+          openSection={openSection}
+          copiedShare={copiedShare}
+          onToggleSection={toggleSection}
+          onSaveContact={() => downloadVCardFile(content)}
+          onShareCard={() => void handleShareCard()}
+          footerNote={footerNote}
+        />
+      </div>
+    );
+  }
 
   const heroPaddingClass = hasTopMockupBar
     ? compact

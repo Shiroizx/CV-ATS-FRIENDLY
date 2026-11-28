@@ -108,8 +108,8 @@ export default function IPhone18ProMaxMockup({
         className="relative bg-white overflow-hidden flex flex-col"
         style={{
           width: exactSize ? '440px' : '100%',
-          height: exactSize ? '956px' : undefined,
-          minHeight: exactSize ? '956px' : '560px',
+          height: exactSize ? '956px' : '596px',
+          minHeight: exactSize ? '956px' : '596px',
           borderRadius: screenRadius,
         }}
       >
@@ -185,7 +185,7 @@ export default function IPhone18ProMaxMockup({
         </div>
 
         {/* Konten Layar */}
-        <div className="relative z-10 flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="relative z-10 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {children}
         </div>
 

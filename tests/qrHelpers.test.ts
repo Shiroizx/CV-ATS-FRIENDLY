@@ -7,8 +7,19 @@ import {
   extractDisplayHost,
   validateUrlQRForm,
   validateVCardQRForm,
+  validateBusinessQRForm,
+  validateQRForm,
+  formatBusinessTimeLabel,
+  resolveBusinessScheduleRows,
+  getQRDisplayTitle,
   generateVCardVcfString,
   resolveUrlQRPayload,
+  resolveQRViewerLink,
+  resolveVCardBrutalismPalette,
+  pickAccessibleInkOnColor,
+  hasLowColorContrast,
+  resolveVCardPreviewChrome,
+  resolveBusinessPreviewChrome,
   checkQRScannability,
   validateLogoFileMeta,
   generateShortCode,
@@ -22,8 +33,10 @@ import {
 } from '../src/lib/qrHelpers.ts';
 import {
   DEFAULT_QR_STYLE,
+  DEFAULT_VCARD_BRUTALISM_PALETTE,
   INITIAL_URL_CONTENT,
   INITIAL_VCARD_CONTENT,
+  INITIAL_BUSINESS_CONTENT,
 } from '../src/types/qrGenerator.ts';
 
 test('URL normalization, domain validation, and XSS blocking', () => {
@@ -305,4 +318,177 @@ test('subdomain normalization, validation, suggestions, and hostname parsing wor
     resolveUrlQRPayload('http://localhost:5173', 'adlzil', 'suggested'),
     'https://adlzil.freebuildcv.tech'
   );
+  assert.equal(
+    resolveQRViewerLink('http://192.168.137.1:5173', 'coffenusa', 'suggested'),
+    'http://192.168.137.1:5173/q/coffenusa'
+  );
+  assert.equal(
+    resolveQRViewerLink('http://localhost:5173', 'coffenusa', 'custom'),
+    'http://localhost:5173/q/coffenusa'
+  );
+  assert.equal(
+    resolveQRViewerLink('https://www.freebuildcv.tech', 'coffenusa', 'suggested'),
+    'https://coffenusa.freebuildcv.tech'
+  );
+});
+
+test('validateBusinessQRForm enforces companyName and checks CTA buttons, website, email, and socials', () => {
+  const emptyRes = validateBusinessQRForm(INITIAL_BUSINESS_CONTENT, {
+    enabled: false,
+    password: '',
+  });
+  assert.equal(emptyRes.isValid, false);
+  assert.ok(emptyRes.errors.companyName);
+
+  const badButtonRes = validateBusinessQRForm(
+    {
+      ...INITIAL_BUSINESS_CONTENT,
+      companyName: 'Kopi Nusantara',
+      buttons: [{ id: 'b1', label: 'Menu Spesial', url: 'tidak-valid' }],
+    },
+    { enabled: false, password: '' }
+  );
+  assert.equal(badButtonRes.isValid, false);
+  assert.ok(badButtonRes.errors['button_url_b1']);
+
+  const partialLabelRes = validateBusinessQRForm(
+    {
+      ...INITIAL_BUSINESS_CONTENT,
+      companyName: 'Kopi Nusantara',
+      buttons: [{ id: 'b1', label: '', url: 'https://kopinusantara.id' }],
+    },
+    { enabled: false, password: '' }
+  );
+  assert.equal(partialLabelRes.isValid, false);
+  assert.ok(partialLabelRes.errors['button_label_b1']);
+
+  const validRes = validateQRForm(
+    {
+      ...INITIAL_BUSINESS_CONTENT,
+      companyName: 'Kopi Nusantara',
+      buttons: [{ id: 'b1', label: 'Pesan Sekarang', url: 'kopinusantara.id/order' }],
+      website: 'kopinusantara.id',
+      emails: [{ id: 'e1', label: 'Kerja', email: 'halo@kopinusantara.id' }],
+    },
+    { enabled: false, password: '' }
+  );
+  assert.equal(validRes.isValid, true);
+});
+
+test('formatBusinessTimeLabel and resolveBusinessScheduleRows handle 24h, ampm, and weekday bulk mode', () => {
+  assert.equal(formatBusinessTimeLabel('13:00', '24h'), '13:00');
+  assert.equal(formatBusinessTimeLabel('13:00', 'ampm'), '01:00 PM');
+  assert.equal(formatBusinessTimeLabel('00:05', 'ampm'), '12:05 AM');
+  assert.equal(formatBusinessTimeLabel('09:30', 'ampm'), '09:30 AM');
+
+  const rows = resolveBusinessScheduleRows({
+    ...INITIAL_BUSINESS_CONTENT,
+    scheduleMode: 'ampm',
+    useWeekdayGroup: true,
+    weekdayGroupIntervals: [{ id: 'wd-1', start: '13:00', end: '23:00' }],
+    days: {
+      ...INITIAL_BUSINESS_CONTENT.days,
+      sat: { enabled: true, intervals: [{ id: 'sat-1', start: '10:00', end: '20:00' }] },
+      sun: { enabled: false, intervals: [{ id: 'sun-1', start: '10:00', end: '18:00' }] },
+    },
+  });
+
+  assert.equal(rows.length, 7);
+  assert.equal(rows[0].enabled, true);
+  assert.deepEqual(rows[0].formattedIntervals, ['01:00 PM - 11:00 PM']);
+  assert.equal(rows[4].enabled, true);
+  assert.deepEqual(rows[4].formattedIntervals, ['01:00 PM - 11:00 PM']);
+  assert.equal(rows[5].enabled, true);
+  assert.deepEqual(rows[5].formattedIntervals, ['10:00 AM - 08:00 PM']);
+  assert.equal(rows[6].enabled, false);
+});
+
+test('getQRDisplayTitle and generateDomainSuggestions support business QR content', () => {
+  const business = {
+    ...INITIAL_BUSINESS_CONTENT,
+    companyName: 'Kopi Nusantara',
+    headline: 'Artisan Coffee Roastery',
+  };
+  assert.equal(getQRDisplayTitle(business), 'Kopi Nusantara');
+  assert.equal(getQRDisplayTitle({ ...business, qrName: 'QR Outlet Pusat' }), 'QR Outlet Pusat');
+
+  const suggestions = generateDomainSuggestions(business, 'AB12CD34');
+  assert.equal(suggestions.length, 4);
+  assert.equal(suggestions[0], 'kopi');
+  for (const s of suggestions) {
+    assert.equal(validateSubdomainSlug(s).valid, true);
+  }
+});
+
+test('resolveVCardBrutalismPalette normalizes valid hexes and falls back safely', () => {
+  assert.deepEqual(
+    resolveVCardBrutalismPalette(undefined),
+    DEFAULT_VCARD_BRUTALISM_PALETTE
+  );
+  assert.deepEqual(
+    resolveVCardBrutalismPalette({ primary: 'not-hex', secondary: '#112233' }),
+    {
+      ...DEFAULT_VCARD_BRUTALISM_PALETTE,
+      secondary: '#112233',
+    }
+  );
+});
+
+test('pickAccessibleInkOnColor and hasLowColorContrast enforce readable WCAG AA contrast', () => {
+  assert.equal(pickAccessibleInkOnColor('#FDC800', '#1C293C', '#FFFFFF'), '#1C293C');
+  assert.equal(pickAccessibleInkOnColor('#432DD7', '#1C293C', '#FFFFFF'), '#FFFFFF');
+  assert.equal(hasLowColorContrast('#FBFBF9', '#FFFFFF'), true);
+  assert.equal(hasLowColorContrast('#FBFBF9', '#1C293C'), false);
+});
+
+test('resolveVCardPreviewChrome handles default vs brutalism designStyle cleanly', () => {
+  const defaultChrome = resolveVCardPreviewChrome({
+    ...INITIAL_VCARD_CONTENT,
+    designStyle: 'default',
+    primaryColor: '#6594FF',
+    secondaryColor: '#FFFFFF',
+  });
+  assert.equal(defaultChrome.statusBarBg, '#6594FF');
+  assert.equal(defaultChrome.bottomBg, '#FFFFFF');
+  assert.equal(defaultChrome.overlayStatusBar, false);
+
+  const brutalChrome = resolveVCardPreviewChrome({
+    ...INITIAL_VCARD_CONTENT,
+    designStyle: 'brutalism',
+    brutalismPalette: {
+      primary: '#FDC800',
+      secondary: '#432DD7',
+      surface: '#FBFBF9',
+      text: '#1C293C',
+    },
+  });
+  assert.equal(brutalChrome.statusBarBg, '#FDC800');
+  assert.equal(brutalChrome.bottomBg, '#FBFBF9');
+  assert.equal(brutalChrome.overlayStatusBar, false);
+  assert.equal(brutalChrome.statusBarLightText, false);
+});
+
+test('resolveBusinessPreviewChrome handles default vs brutalism designStyle cleanly', () => {
+  const defaultBizChrome = resolveBusinessPreviewChrome({
+    ...INITIAL_BUSINESS_CONTENT,
+    designStyle: 'default',
+    primaryColor: '#ECEDF1',
+  });
+  assert.equal(defaultBizChrome.statusBarBg, '#ECEDF1');
+  assert.equal(defaultBizChrome.bottomBg, '#F8FAFC');
+  assert.equal(defaultBizChrome.statusBarLightText, false);
+
+  const brutalBizChrome = resolveBusinessPreviewChrome({
+    ...INITIAL_BUSINESS_CONTENT,
+    designStyle: 'brutalism',
+    brutalismPalette: {
+      primary: '#432DD7',
+      secondary: '#FDC800',
+      surface: '#FBFBF9',
+      text: '#1C293C',
+    },
+  });
+  assert.equal(brutalBizChrome.statusBarBg, '#432DD7');
+  assert.equal(brutalBizChrome.bottomBg, '#FBFBF9');
+  assert.equal(brutalBizChrome.statusBarLightText, true);
 });

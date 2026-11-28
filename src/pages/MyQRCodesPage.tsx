@@ -9,6 +9,7 @@ import {
   Lock,
   Plus,
   QrCode,
+  Store,
   Trash2,
   User,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import type { SavedQRCode } from '../types/qrGenerator';
 import { DEFAULT_QR_STYLE } from '../types/qrGenerator';
 import {
   extractDisplayHost,
+  resolveQRViewerLink,
   resolveUrlQRPayload,
   sanitizeExternalUrl,
 } from '../lib/qrHelpers';
@@ -260,10 +262,16 @@ export default function MyQRCodesPage() {
                           className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                             qr.qr_type === 'vcard'
                               ? 'bg-indigo-50 text-indigo-700'
-                              : 'bg-blue-50 text-blue-700'
+                              : qr.qr_type === 'business'
+                                ? 'bg-sky-50 text-sky-700'
+                                : 'bg-blue-50 text-blue-700'
                           }`}
                         >
-                          {qr.qr_type === 'vcard' ? 'vCard' : 'URL Situs Web'}
+                          {qr.qr_type === 'vcard'
+                            ? 'vCard'
+                            : qr.qr_type === 'business'
+                              ? 'Halaman Bisnis'
+                              : 'URL Situs Web'}
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
                           Aktif • {qr.scan_count}× scan
@@ -282,7 +290,7 @@ export default function MyQRCodesPage() {
 
                       {qr.content_data?.type === 'vcard' ? (
                         <a
-                          href={resolveUrlQRPayload(
+                          href={resolveQRViewerLink(
                             window.location.origin,
                             qr.short_code,
                             qr.style_options?.domainMode ?? 'default'
@@ -300,6 +308,28 @@ export default function MyQRCodesPage() {
                             ]
                               .filter(Boolean)
                               .join(' • ') || 'Kartu Nama Digital'}
+                          </span>
+                          <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                        </a>
+                      ) : qr.content_data?.type === 'business' ? (
+                        <a
+                          href={resolveQRViewerLink(
+                            window.location.origin,
+                            qr.short_code,
+                            qr.style_options?.domainMode ?? 'default'
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-blue-600 truncate max-w-full mt-0.5"
+                        >
+                          <Store className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">
+                            {[
+                              qr.content_data.companyName,
+                              qr.content_data.headline,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ') || 'Halaman Bisnis Digital'}
                           </span>
                           <ExternalLink className="w-3 h-3 flex-shrink-0" />
                         </a>

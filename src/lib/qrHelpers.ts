@@ -1,10 +1,20 @@
+import {
+  BUSINESS_DAYS,
+  DEFAULT_VCARD_BRUTALISM_PALETTE,
+} from '../types/qrGenerator.ts';
 import type {
+  BusinessContent,
+  BusinessDayKey,
+  BusinessScheduleMode,
   QRContentData,
   QRDomainMode,
   QRPasswordOptions,
   QRStyleOptions,
   UrlContent,
+  VCardBrutalismPalette,
   VCardContent,
+  VCardEmailItem,
+  VCardSocialItem,
 } from '../types/qrGenerator.ts';
 
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
@@ -134,6 +144,39 @@ export function validateUrlQRForm(
   };
 }
 
+function validateCommonOptionalContactFields(
+  fields: {
+    website: string;
+    addressMode: 'manual' | 'url';
+    addressUrl: string;
+    emails: VCardEmailItem[];
+    socials: VCardSocialItem[];
+  },
+  errors: Record<string, string>
+): void {
+  if (fields.website.trim() && !validateUrl(fields.website)) {
+    errors.website = 'Masukkan URL situs web yang valid (misalnya https://adlzil.engineer).';
+  }
+
+  if (fields.addressMode === 'url' && fields.addressUrl.trim() && !validateUrl(fields.addressUrl)) {
+    errors.addressUrl = 'Masukkan URL alamat/peta yang valid.';
+  }
+
+  const invalidEmail = fields.emails.some(
+    (item) => item.email.trim().length > 0 && !validateEmailAddress(item.email)
+  );
+  if (invalidEmail) {
+    errors.emails = 'Periksa format alamat email agar valid.';
+  }
+
+  const invalidSocial = fields.socials.some(
+    (item) => item.url.trim().length > 0 && !validateUrl(item.url)
+  );
+  if (invalidSocial) {
+    errors.socials = 'Periksa URL tautan media sosial agar valid.';
+  }
+}
+
 /**
  * Validasi form vCard + Kata sandi opsional di Langkah 2 & 3.
  */
@@ -147,28 +190,43 @@ export function validateVCardQRForm(
     errors.fullName = 'Nama lengkap wajib diisi.';
   }
 
-  if (content.website.trim() && !validateUrl(content.website)) {
-    errors.website = 'Masukkan URL situs web yang valid (misalnya https://adlzil.engineer).';
+  validateCommonOptionalContactFields(content, errors);
+  validatePasswordOptions(passwordOpts, errors);
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+}
+
+/**
+ * Validasi form Halaman Bisnis + Kata sandi opsional di Langkah 2 & 3.
+ */
+export function validateBusinessQRForm(
+  content: BusinessContent,
+  passwordOpts: QRPasswordOptions
+): { isValid: boolean; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+
+  if (!content.companyName.trim()) {
+    errors.companyName = 'Nama perusahaan wajib diisi.';
   }
 
-  if (content.addressMode === 'url' && content.addressUrl.trim() && !validateUrl(content.addressUrl)) {
-    errors.addressUrl = 'Masukkan URL alamat/peta yang valid.';
+  for (const btn of content.buttons) {
+    const cleanLabel = btn.label.trim();
+    const cleanUrl = btn.url.trim();
+    if (!cleanLabel && !cleanUrl) continue;
+    if (!cleanLabel) {
+      errors[`button_label_${btn.id}`] = 'Teks tombol wajib diisi.';
+    }
+    if (!cleanUrl) {
+      errors[`button_url_${btn.id}`] = 'URL tombol wajib diisi.';
+    } else if (!validateUrl(cleanUrl)) {
+      errors[`button_url_${btn.id}`] = 'Anda memasukkan tautan yang tidak valid.';
+    }
   }
 
-  const invalidEmail = content.emails.some(
-    (item) => item.email.trim().length > 0 && !validateEmailAddress(item.email)
-  );
-  if (invalidEmail) {
-    errors.emails = 'Periksa format alamat email agar valid.';
-  }
-
-  const invalidSocial = content.socials.some(
-    (item) => item.url.trim().length > 0 && !validateUrl(item.url)
-  );
-  if (invalidSocial) {
-    errors.socials = 'Periksa URL tautan media sosial agar valid.';
-  }
-
+  validateCommonOptionalContactFields(content, errors);
   validatePasswordOptions(passwordOpts, errors);
 
   return {
@@ -186,6 +244,9 @@ export function validateQRForm(
 ): { isValid: boolean; errors: Record<string, string> } {
   if (content.type === 'vcard') {
     return validateVCardQRForm(content, passwordOpts);
+  }
+  if (content.type === 'business') {
+    return validateBusinessQRForm(content, passwordOpts);
   }
   return validateUrlQRForm(content, passwordOpts);
 }
@@ -206,6 +267,32 @@ export function resolveUrlQRPayload(
     return `https://${cleanCode.toLowerCase()}.freebuildcv.tech`;
   }
   const cleanOrigin = origin.replace(/\/$/, '');
+  return `${cleanOrigin}/q/${cleanCode || 'preview'}`;
+}
+
+/**
+ * Menentukan tautan buka pratinjau langsung di aplikasi:
+ * Saat diakses dari server development/lokal (localhost / LAN IP), arahkan ke rute `/q/:shortCode`
+ * di origin aktif agar perubahan lokal bisa langsung diuji tanpa terlempar ke server production.
+ */
+export function resolveQRViewerLink(
+  origin: string,
+  shortCode: string,
+  domainMode: QRDomainMode = 'default'
+): string {
+  const cleanOrigin = origin.replace(/\/$/, '');
+  const cleanCode = shortCode.trim();
+  let isProdHost = false;
+  try {
+    const host = new URL(cleanOrigin).hostname.toLowerCase();
+    isProdHost = host === PUBLIC_QR_DOMAIN || host.endsWith(`.${PUBLIC_QR_DOMAIN}`);
+  } catch {
+    isProdHost = false;
+  }
+
+  if (isProdHost) {
+    return resolveUrlQRPayload(origin, shortCode, domainMode);
+  }
   return `${cleanOrigin}/q/${cleanCode || 'preview'}`;
 }
 
@@ -255,6 +342,124 @@ export function getContrastRatio(hexA: string, hexB: string): number {
   const lighter = Math.max(lumA, lumB);
   const darker = Math.min(lumA, lumB);
   return (lighter + 0.05) / (darker + 0.05);
+}
+
+function normalizeHexOrFallback(raw: string | undefined, fallback: string): string {
+  const clean = (raw || '').trim();
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(clean)) {
+    return clean.toUpperCase();
+  }
+  return fallback;
+}
+
+/**
+ * Menormalkan palet warna Brutalism vCard agar seluruh token warna memiliki hex valid.
+ */
+export function resolveVCardBrutalismPalette(
+  palette?: Partial<VCardBrutalismPalette> | null
+): VCardBrutalismPalette {
+  return {
+    primary: normalizeHexOrFallback(
+      palette?.primary,
+      DEFAULT_VCARD_BRUTALISM_PALETTE.primary
+    ),
+    secondary: normalizeHexOrFallback(
+      palette?.secondary,
+      DEFAULT_VCARD_BRUTALISM_PALETTE.secondary
+    ),
+    surface: normalizeHexOrFallback(
+      palette?.surface,
+      DEFAULT_VCARD_BRUTALISM_PALETTE.surface
+    ),
+    text: normalizeHexOrFallback(
+      palette?.text,
+      DEFAULT_VCARD_BRUTALISM_PALETTE.text
+    ),
+  };
+}
+
+/**
+ * Memilih warna teks paling terbaca (WCAG AA) di atas latar warna tertentu.
+ */
+export function pickAccessibleInkOnColor(
+  bgHex: string,
+  preferredDark = '#111827',
+  preferredLight = '#FFFFFF'
+): string {
+  const darkRatio = getContrastRatio(bgHex, preferredDark);
+  const lightRatio = getContrastRatio(bgHex, preferredLight);
+  if (darkRatio >= lightRatio && darkRatio >= 4.5) return preferredDark;
+  if (lightRatio > darkRatio && lightRatio >= 4.5) return preferredLight;
+  const fallbackDarkRatio = getContrastRatio(bgHex, '#09090B');
+  const fallbackLightRatio = getContrastRatio(bgHex, '#FFFFFF');
+  return fallbackDarkRatio >= fallbackLightRatio ? '#09090B' : '#FFFFFF';
+}
+
+/**
+ * Mendeteksi apakah dua warna memiliki rasio kontras di bawah ambang WCAG AA.
+ */
+export function hasLowColorContrast(
+  hexA: string,
+  hexB: string,
+  minRatio = 4.5
+): boolean {
+  return getContrastRatio(hexA, hexB) < minRatio;
+}
+
+/**
+ * Menentukan warna status bar atas dan bottom bar Home Indicator mockup iPhone untuk vCard.
+ */
+export function resolveVCardPreviewChrome(content: VCardContent): {
+  statusBarBg: string;
+  bottomBg: string;
+  overlayStatusBar: boolean;
+  statusBarLightText: boolean;
+} {
+  const hasBanner = Boolean(content.bannerDataUrl);
+  if ((content.designStyle ?? 'default') === 'brutalism') {
+    const palette = resolveVCardBrutalismPalette(content.brutalismPalette);
+    return {
+      statusBarBg: palette.primary,
+      bottomBg: palette.surface,
+      overlayStatusBar: hasBanner,
+      statusBarLightText:
+        hasBanner || calculateRelativeLuminance(palette.primary) <= 0.45,
+    };
+  }
+
+  const primaryBg = normalizeHexOrFallback(content.primaryColor, '#6594FF');
+  const secondaryBg = normalizeHexOrFallback(content.secondaryColor, '#FFFFFF');
+  return {
+    statusBarBg: primaryBg,
+    bottomBg: secondaryBg,
+    overlayStatusBar: hasBanner,
+    statusBarLightText: hasBanner,
+  };
+}
+
+/**
+ * Menentukan warna status bar atas dan bottom bar Home Indicator mockup iPhone untuk Halaman Bisnis.
+ */
+export function resolveBusinessPreviewChrome(content: BusinessContent): {
+  statusBarBg: string;
+  bottomBg: string;
+  statusBarLightText: boolean;
+} {
+  if ((content.designStyle ?? 'default') === 'brutalism') {
+    const palette = resolveVCardBrutalismPalette(content.brutalismPalette);
+    return {
+      statusBarBg: palette.primary,
+      bottomBg: palette.surface,
+      statusBarLightText: calculateRelativeLuminance(palette.primary) <= 0.45,
+    };
+  }
+
+  const primaryBg = normalizeHexOrFallback(content.primaryColor, '#ECEDF1');
+  return {
+    statusBarBg: primaryBg,
+    bottomBg: '#F8FAFC',
+    statusBarLightText: calculateRelativeLuminance(primaryBg) < 0.45,
+  };
 }
 
 /**
@@ -328,6 +533,16 @@ export function generateShortCode(length = 8): string {
 }
 
 /**
+ * Menghasilkan ID baris deterministik-aman untuk daftar dinamis di form QR.
+ */
+export function createRowId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/**
  * Menentukan judul QR yang rapi untuk ditampilkan di daftar tersimpan.
  */
 export function getQRDisplayTitle(content: QRContentData): string {
@@ -335,8 +550,73 @@ export function getQRDisplayTitle(content: QRContentData): string {
   if (content.type === 'vcard') {
     return content.fullName.trim() || 'Kartu Nama vCard';
   }
+  if (content.type === 'business') {
+    return content.companyName.trim() || 'Halaman Bisnis';
+  }
   const host = extractDisplayHost(content.url);
   return host || 'Kode QR Situs Web';
+}
+
+const WEEKDAY_KEYS = new Set<BusinessDayKey>(['mon', 'tue', 'wed', 'thu', 'fri']);
+
+/**
+ * Memformat string waktu HH:mm ke format tampilan 24 jam atau 12 jam AM/PM.
+ */
+export function formatBusinessTimeLabel(
+  hhmm: string,
+  mode: BusinessScheduleMode
+): string {
+  const [hRaw = '09', mRaw = '00'] = hhmm.trim().split(':');
+  const hourNum = Math.min(23, Math.max(0, Number.parseInt(hRaw, 10) || 0));
+  const minNum = Math.min(59, Math.max(0, Number.parseInt(mRaw, 10) || 0));
+  const mm = String(minNum).padStart(2, '0');
+
+  if (mode !== 'ampm') {
+    return `${String(hourNum).padStart(2, '0')}:${mm}`;
+  }
+
+  const period = hourNum >= 12 ? 'PM' : 'AM';
+  const hour12 = hourNum % 12 === 0 ? 12 : hourNum % 12;
+  return `${String(hour12).padStart(2, '0')}:${mm} ${period}`;
+}
+
+export interface BusinessScheduleRow {
+  key: BusinessDayKey;
+  label: string;
+  enabled: boolean;
+  formattedIntervals: string[];
+}
+
+/**
+ * Menghasilkan jadwal 7 hari terformat untuk Halaman Bisnis (termasuk mode Senin–Jumat massal).
+ */
+export function resolveBusinessScheduleRows(
+  business: BusinessContent
+): BusinessScheduleRow[] {
+  return BUSINESS_DAYS.map((day) => {
+    const useBulk = business.useWeekdayGroup && WEEKDAY_KEYS.has(day.key);
+    const intervals = useBulk
+      ? business.weekdayGroupIntervals
+      : business.days[day.key]?.intervals ?? [];
+    const enabled = useBulk
+      ? intervals.length > 0
+      : Boolean(business.days[day.key]?.enabled && intervals.length > 0);
+
+    return {
+      key: day.key,
+      label: day.label,
+      enabled,
+      formattedIntervals: enabled
+        ? intervals.map(
+            (slot) =>
+              `${formatBusinessTimeLabel(slot.start, business.scheduleMode)} - ${formatBusinessTimeLabel(
+                slot.end,
+                business.scheduleMode
+              )}`
+          )
+        : [],
+    };
+  });
 }
 
 function escapeVCardText(value: string): string {
@@ -376,13 +656,19 @@ function mapEmailTypeToVcf(label: string): string {
 /**
  * Memformat data alamat manual vCard menjadi string satu baris yang rapi.
  */
-export function formatVCardManualAddress(vcard: VCardContent): string {
+export function formatVCardManualAddress(address: {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}): string {
   return [
-    vcard.street.trim(),
-    vcard.city.trim(),
-    vcard.state.trim(),
-    vcard.postalCode.trim(),
-    vcard.country.trim(),
+    address.street.trim(),
+    address.city.trim(),
+    address.state.trim(),
+    address.postalCode.trim(),
+    address.country.trim(),
   ]
     .filter(Boolean)
     .join(', ');
@@ -877,6 +1163,9 @@ export function generateDomainSuggestions(
   if (content.type === 'vcard') {
     nameWords = cleanSlugWords(content.fullName || content.qrName || content.company);
     orgWords = cleanSlugWords(content.company);
+  } else if (content.type === 'business') {
+    nameWords = cleanSlugWords(content.companyName || content.qrName || content.headline);
+    orgWords = cleanSlugWords(content.headline);
   } else {
     const rawHost = extractDisplayHost(content.url).split('/')[0] || '';
     const firstLabel = rawHost.replace(/^www\./, '').split('.')[0] || '';

@@ -20,22 +20,30 @@ export function QRVCardSectionCard({
   title,
   subtitle,
   defaultOpen = true,
+  allowOverflow = false,
   children,
 }: {
   icon: ReactNode;
   title: string;
   subtitle: string;
   defaultOpen?: boolean;
+  allowOverflow?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs overflow-hidden">
+    <div
+      className={`bg-white rounded-2xl border border-zinc-200 shadow-xs ${
+        allowOverflow ? '' : 'overflow-hidden'
+      }`}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full px-5 sm:px-6 py-4 flex items-center justify-between gap-4 hover:bg-zinc-50/70 transition-colors text-left cursor-pointer"
+        className={`w-full px-5 sm:px-6 py-4 flex items-center justify-between gap-4 hover:bg-zinc-50/70 transition-colors text-left cursor-pointer ${
+          open ? 'rounded-t-2xl' : 'rounded-2xl'
+        }`}
       >
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">

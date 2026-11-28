@@ -19,6 +19,8 @@ import {
   buildWatermarkTileDataUrl,
   extractDisplayHost,
   getQRDisplayTitle,
+  resolveBusinessPreviewChrome,
+  resolveVCardPreviewChrome,
   sanitizeExternalUrl,
 } from '../../lib/qrHelpers';
 import type { DownloadCreditInfo } from '../../lib/downloadCredit';
@@ -26,6 +28,7 @@ import FramedQRCanvas from './FramedQRCanvas';
 import IPhone18ProMaxMockup from './IPhone18ProMaxMockup';
 import QRTypeHoverPreview from './QRTypeHoverPreview';
 import VCardMobileView from './VCardMobileView';
+import BusinessMobileView from './BusinessMobileView';
 
 interface QRPreviewProps {
   step: WizardStep;
@@ -74,7 +77,10 @@ export default function QRPreview({
 
   if (splashTrigger !== prevSplashTrigger) {
     setPrevSplashTrigger(splashTrigger);
-    if (content.type === 'vcard' && content.splashDataUrl) {
+    if (
+      (content.type === 'vcard' || content.type === 'business') &&
+      content.splashDataUrl
+    ) {
       setTab('preview');
       setShowingVCardSplash(true);
     }
@@ -97,19 +103,21 @@ export default function QRPreview({
   const isVCardPreviewTab = Boolean(
     step > 1 && content.type === 'vcard' && tab === 'preview'
   );
+  const isBusinessPreviewTab = Boolean(
+    step > 1 && content.type === 'business' && tab === 'preview'
+  );
+  const isRichPagePreviewTab = isVCardPreviewTab || isBusinessPreviewTab;
+  const vcardChrome =
+    content.type === 'vcard' ? resolveVCardPreviewChrome(content) : null;
+  const businessChrome =
+    content.type === 'business' ? resolveBusinessPreviewChrome(content) : null;
   const isVCardHasBanner = Boolean(
     isVCardPreviewTab && content.type === 'vcard' && content.bannerDataUrl
   );
-  const vcardHeroPrimary =
-    content.type === 'vcard' &&
-    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(content.primaryColor)
-      ? content.primaryColor
-      : '#6594FF';
-  const vcardBottomBg =
-    content.type === 'vcard' &&
-    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(content.secondaryColor)
-      ? content.secondaryColor
-      : '#FFFFFF';
+  const splashImageUrl =
+    content.type === 'vcard' || content.type === 'business'
+      ? content.splashDataUrl
+      : null;
   const isPhoneWatermarkVisible = Boolean(showWatermark && step > 1 && tab === 'qr');
   const phoneWatermarkUrl = useMemo(
     () => (isPhoneWatermarkVisible ? buildWatermarkTileDataUrl(false) : ''),
@@ -120,7 +128,7 @@ export default function QRPreview({
     <div className="flex flex-col items-center">
       {/* Toggle Pratinjau | Kode QR */}
       {step > 1 && (
-        <div className="inline-flex p-1 rounded-full bg-white border border-blue-200 shadow-2xs mb-5">
+        <div className="inline-flex p-1 rounded-full bg-white border border-blue-200 shadow-2xs mb-4">
           <button
             type="button"
             onClick={() => setTab('preview')}
@@ -151,14 +159,35 @@ export default function QRPreview({
       {/* iPhone 18 Pro Max Mockup Frame */}
       <IPhone18ProMaxMockup
         exactSize={false}
-        statusBarBg={isVCardPreviewTab ? vcardHeroPrimary : undefined}
-        overlayStatusBar={isVCardHasBanner}
-        statusBarLightText={isVCardHasBanner}
-        bottomBg={isVCardPreviewTab ? vcardBottomBg : '#FFFFFF'}
+        statusBarBg={
+          isVCardPreviewTab && vcardChrome
+            ? vcardChrome.statusBarBg
+            : isBusinessPreviewTab && businessChrome
+              ? businessChrome.statusBarBg
+              : undefined
+        }
+        overlayStatusBar={
+          isVCardPreviewTab && vcardChrome ? vcardChrome.overlayStatusBar : false
+        }
+        statusBarLightText={
+          (isVCardPreviewTab && vcardChrome
+            ? vcardChrome.statusBarLightText
+            : false) ||
+          (isBusinessPreviewTab && businessChrome
+            ? businessChrome.statusBarLightText
+            : false)
+        }
+        bottomBg={
+          isVCardPreviewTab && vcardChrome
+            ? vcardChrome.bottomBg
+            : isBusinessPreviewTab && businessChrome
+              ? businessChrome.bottomBg
+              : '#FFFFFF'
+        }
         splashVisible={Boolean(
-          content.type === 'vcard' && step > 1 && showingVCardSplash && tab === 'preview'
+          isRichPagePreviewTab && showingVCardSplash && Boolean(splashImageUrl)
         )}
-        splashImageUrl={content.type === 'vcard' ? content.splashDataUrl : null}
+        splashImageUrl={splashImageUrl}
         fadeSplashBackdropIn
         onDismissSplash={() => setShowingVCardSplash(false)}
         backgroundOverlay={
@@ -202,9 +231,9 @@ export default function QRPreview({
             </div>
           )
         ) : (
-          <div className="relative z-10 flex-1 flex flex-col">
+          <div className="relative z-10 flex-1 flex-shrink-0 min-h-full flex flex-col">
             {/* Mini browser address bar inside phone (hanya untuk URL atau tab Kode QR) */}
-            {!isVCardPreviewTab && (
+            {!isRichPagePreviewTab && (
               <div className="px-4 pb-3">
                 <div className="bg-zinc-100/90 backdrop-blur-xs rounded-full px-3 py-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-zinc-600 truncate">
                   {passwordEnabled ? (
@@ -224,6 +253,8 @@ export default function QRPreview({
                   compact
                   hasTopMockupBar={isVCardHasBanner}
                 />
+              ) : content.type === 'business' ? (
+                <BusinessMobileView content={content} compact />
               ) : (
                 /* Pratinjau halaman tujuan (sesuai screenshot image.png) */
                 <div className="flex-1 bg-indigo-100/70 p-3 flex flex-col gap-3">

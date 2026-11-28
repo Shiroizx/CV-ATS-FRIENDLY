@@ -76,7 +76,7 @@ export const QR_TYPES: readonly QRTypeConfig[] = [
     label: 'Halaman Bisnis',
     description: 'Bagikan informasi bisnis Anda',
     icon: 'Store',
-    available: false,
+    available: true,
   },
   {
     id: 'menu',
@@ -143,9 +143,26 @@ export const DEFAULT_VCARD_BANNER_WAVE: VCardBannerWaveConfig = {
   flipX: false,
 };
 
+export type VCardDesignStyle = 'default' | 'brutalism';
+
+export interface VCardBrutalismPalette {
+  primary: string;
+  secondary: string;
+  surface: string;
+  text: string;
+}
+
+export interface VCardBrutalismScheme {
+  id: string;
+  label: string;
+  palette: VCardBrutalismPalette;
+}
+
 export interface VCardContent {
   type: 'vcard';
   qrName: string;
+  designStyle?: VCardDesignStyle;
+  brutalismPalette?: VCardBrutalismPalette;
   primaryColor: string;
   secondaryColor: string;
   bannerDataUrl: string | null;
@@ -177,7 +194,117 @@ export interface VCardContent {
   splashFileName: string;
 }
 
-export type QRContentData = UrlContent | VCardContent;
+export type BusinessScheduleMode = '24h' | 'ampm' | 'open24';
+
+export type BusinessDayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export const BUSINESS_DAYS: readonly { key: BusinessDayKey; label: string }[] = [
+  { key: 'mon', label: 'Senin' },
+  { key: 'tue', label: 'Selasa' },
+  { key: 'wed', label: 'Rabu' },
+  { key: 'thu', label: 'Kamis' },
+  { key: 'fri', label: 'Jumat' },
+  { key: 'sat', label: 'Sabtu' },
+  { key: 'sun', label: 'Minggu' },
+] as const;
+
+export interface BusinessTimeInterval {
+  id: string;
+  start: string;
+  end: string;
+}
+
+export interface BusinessDaySchedule {
+  enabled: boolean;
+  intervals: BusinessTimeInterval[];
+}
+
+export type BusinessFacilityId =
+  | 'wifi'
+  | 'train'
+  | 'seating'
+  | 'taxi'
+  | 'accessible'
+  | 'accommodation'
+  | 'toilet'
+  | 'cafe'
+  | 'kid_friendly'
+  | 'bar'
+  | 'pet_friendly'
+  | 'restaurant'
+  | 'parking';
+
+export const BUSINESS_FACILITIES: readonly {
+  id: BusinessFacilityId;
+  label: string;
+}[] = [
+  { id: 'wifi', label: 'Wi-Fi' },
+  { id: 'train', label: 'Kereta Api' },
+  { id: 'seating', label: 'Kursi' },
+  { id: 'taxi', label: 'Taksi' },
+  { id: 'accessible', label: 'Dapat diakses' },
+  { id: 'accommodation', label: 'Akomodasi' },
+  { id: 'toilet', label: 'Toilet' },
+  { id: 'cafe', label: 'Kafe' },
+  { id: 'kid_friendly', label: 'Ramah anak' },
+  { id: 'bar', label: 'Bar' },
+  { id: 'pet_friendly', label: 'Ramah hewan peliharaan' },
+  { id: 'restaurant', label: 'Restoran' },
+  { id: 'parking', label: 'Parkir' },
+] as const;
+
+export interface BusinessButtonItem {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface BusinessContent {
+  type: 'business';
+  qrName: string;
+  designStyle?: VCardDesignStyle;
+  brutalismPalette?: VCardBrutalismPalette;
+  primaryColor: string;
+  secondaryColor: string;
+  coverDataUrl: string | null;
+  coverFileName: string;
+  companyName: string;
+  headline: string;
+  subtitle: string;
+  buttons: BusinessButtonItem[];
+  scheduleMode: BusinessScheduleMode;
+  useWeekdayGroup: boolean;
+  weekdayGroupIntervals: BusinessTimeInterval[];
+  days: Record<BusinessDayKey, BusinessDaySchedule>;
+  contactName: string;
+  phones: VCardPhoneItem[];
+  website: string;
+  emails: VCardEmailItem[];
+  addressMode: 'manual' | 'url';
+  street: string;
+  postalCode: string;
+  city: string;
+  state: string;
+  country: string;
+  addressUrl: string;
+  facilities: BusinessFacilityId[];
+  summary: string;
+  socials: VCardSocialItem[];
+  splashDataUrl: string | null;
+  splashFileName: string;
+}
+
+export type QRContentData = UrlContent | VCardContent | BusinessContent;
+
+export const BUSINESS_COLOR_SCHEMES: readonly VCardColorScheme[] = [
+  { id: 'silver-charcoal', primary: '#ECEDF1', secondary: '#232321', label: 'Abu Lembut & Hitam' },
+  { id: 'blue-charcoal', primary: '#D8EAF9', secondary: '#1E3A8A', label: 'Biru Lembut & Navy' },
+  { id: 'cream-espresso', primary: '#F5EFE6', secondary: '#3E2723', label: 'Krem & Espresso' },
+  { id: 'mint-forest', primary: '#E2F3EA', secondary: '#14532D', label: 'Mint & Hijau Hutan' },
+  { id: 'lavender-plum', primary: '#EDE7F6', secondary: '#4C1D95', label: 'Lavender & Ungu' },
+  { id: 'rose-burgundy', primary: '#FCE7F3', secondary: '#831843', label: 'Mawar & Marun' },
+  { id: 'amber-slate', primary: '#FEF3C7', secondary: '#1F2937', label: 'Amber & Slate' },
+] as const;
 
 export interface VCardColorScheme {
   id: string;
@@ -194,6 +321,71 @@ export const VCARD_COLOR_SCHEMES: readonly VCardColorScheme[] = [
   { id: 'lavender-white', primary: '#B39DDB', secondary: '#FFFFFF', label: 'Ungu & Putih' },
   { id: 'mint-dark', primary: '#6BD09D', secondary: '#18181B', label: 'Mint & Hitam' },
   { id: 'gold-white', primary: '#F9C963', secondary: '#FFFFFF', label: 'Kuning & Putih' },
+] as const;
+
+export const DEFAULT_VCARD_BRUTALISM_PALETTE: VCardBrutalismPalette = {
+  primary: '#FDC800',
+  secondary: '#432DD7',
+  surface: '#FBFBF9',
+  text: '#1C293C',
+};
+
+export const VCARD_BRUTALISM_SCHEMES: readonly VCardBrutalismScheme[] = [
+  {
+    id: 'brutal-yellow',
+    label: 'Kuning Brutal & Indigo',
+    palette: DEFAULT_VCARD_BRUTALISM_PALETTE,
+  },
+  {
+    id: 'concrete-coral',
+    label: 'Beton Terakota & Emas',
+    palette: {
+      primary: '#DD614C',
+      secondary: '#DAA144',
+      surface: '#FFFFFF',
+      text: '#111827',
+    },
+  },
+  {
+    id: 'mint-punch',
+    label: 'Mint Elektrik & Pink',
+    palette: {
+      primary: '#4ADE80',
+      secondary: '#FF5A8A',
+      surface: '#FAF9F5',
+      text: '#111827',
+    },
+  },
+  {
+    id: 'acid-noir',
+    label: 'Lime Neon & Gelap',
+    palette: {
+      primary: '#D9F99D',
+      secondary: '#0F172A',
+      surface: '#FFFFFF',
+      text: '#09090B',
+    },
+  },
+  {
+    id: 'cyber-kobalt',
+    label: 'Biru Kobalt & Kuning',
+    palette: {
+      primary: '#3B82F6',
+      secondary: '#FACC15',
+      surface: '#F4F4F0',
+      text: '#111827',
+    },
+  },
+  {
+    id: 'monochrome-zine',
+    label: 'Zine Monokrom Tegas',
+    palette: {
+      primary: '#E5E7EB',
+      secondary: '#111827',
+      surface: '#FFFFFF',
+      text: '#09090B',
+    },
+  },
 ] as const;
 
 export type QRDotType =
@@ -311,6 +503,8 @@ export const INITIAL_URL_CONTENT: UrlContent = {
 export const INITIAL_VCARD_CONTENT: VCardContent = {
   type: 'vcard',
   qrName: '',
+  designStyle: 'default',
+  brutalismPalette: DEFAULT_VCARD_BRUTALISM_PALETTE,
   primaryColor: '#6594FF',
   secondaryColor: '#FFFFFF',
   bannerDataUrl: null,
@@ -338,6 +532,49 @@ export const INITIAL_VCARD_CONTENT: VCardContent = {
   skills: [],
   showShareButton: true,
   defaultOpenSection: 'none',
+  splashDataUrl: null,
+  splashFileName: '',
+};
+
+export const INITIAL_BUSINESS_CONTENT: BusinessContent = {
+  type: 'business',
+  qrName: '',
+  designStyle: 'default',
+  brutalismPalette: DEFAULT_VCARD_BRUTALISM_PALETTE,
+  primaryColor: '#ECEDF1',
+  secondaryColor: '#232321',
+  coverDataUrl: null,
+  coverFileName: '',
+  companyName: '',
+  headline: '',
+  subtitle: '',
+  buttons: [{ id: 'btn-1', label: '', url: '' }],
+  scheduleMode: '24h',
+  useWeekdayGroup: false,
+  weekdayGroupIntervals: [{ id: 'wd-1', start: '09:00', end: '17:00' }],
+  days: {
+    mon: { enabled: true, intervals: [{ id: 'mon-1', start: '09:00', end: '17:00' }] },
+    tue: { enabled: true, intervals: [{ id: 'tue-1', start: '09:00', end: '17:00' }] },
+    wed: { enabled: true, intervals: [{ id: 'wed-1', start: '09:00', end: '17:00' }] },
+    thu: { enabled: true, intervals: [{ id: 'thu-1', start: '09:00', end: '17:00' }] },
+    fri: { enabled: true, intervals: [{ id: 'fri-1', start: '09:00', end: '17:00' }] },
+    sat: { enabled: false, intervals: [{ id: 'sat-1', start: '09:00', end: '15:00' }] },
+    sun: { enabled: false, intervals: [{ id: 'sun-1', start: '09:00', end: '15:00' }] },
+  },
+  contactName: '',
+  phones: [{ id: 'b-phone-1', label: 'Cara Kerja', number: '' }],
+  website: '',
+  emails: [{ id: 'b-email-1', label: 'Kerja', email: '' }],
+  addressMode: 'manual',
+  street: '',
+  postalCode: '',
+  city: '',
+  state: '',
+  country: '',
+  addressUrl: '',
+  facilities: [],
+  summary: '',
+  socials: [],
   splashDataUrl: null,
   splashFileName: '',
 };

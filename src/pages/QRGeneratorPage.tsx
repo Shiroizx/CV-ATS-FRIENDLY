@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import type {
+  BusinessContent,
   QRContentData,
   QRPasswordOptions,
   QRStyleOptions,
@@ -25,6 +26,7 @@ import type {
 } from '../types/qrGenerator';
 import {
   DEFAULT_QR_STYLE,
+  INITIAL_BUSINESS_CONTENT,
   INITIAL_URL_CONTENT,
   INITIAL_VCARD_CONTENT,
 } from '../types/qrGenerator';
@@ -36,6 +38,7 @@ import {
   getQRDisplayTitle,
   normalizeUrl,
   resolveUrlQRPayload,
+  resolveVCardBrutalismPalette,
   sanitizeSubdomainInput,
   validateQRForm,
   validateSubdomainSlug,
@@ -63,11 +66,18 @@ import QRStepIndicator from '../components/qr-generator/QRStepIndicator';
 import QRTypeSelector from '../components/qr-generator/QRTypeSelector';
 import QRUrlContentForm from '../components/qr-generator/QRUrlContentForm';
 import QRVCardContentForm from '../components/qr-generator/QRVCardContentForm';
+import QRBusinessContentForm from '../components/qr-generator/QRBusinessContentForm';
 import QRCustomizer from '../components/qr-generator/QRCustomizer';
 import QRPreview from '../components/qr-generator/QRPreview';
 
 const DRAFT_STORAGE_KEY = 'freebuild_qr_draft_v1';
 const DRAFT_PWD_KEY = 'freebuild_qr_pwd_v1';
+
+const QR_TYPE_LABELS: Partial<Record<QRType, string>> = {
+  url: 'URL Situs Web',
+  vcard: 'vCard',
+  business: 'Halaman Bisnis',
+};
 
 interface StoredQRDraft {
   step: WizardStep;
@@ -88,6 +98,10 @@ function coerceContentData(
       ...INITIAL_VCARD_CONTENT,
       ...vc,
       type: 'vcard',
+      designStyle: vc.designStyle === 'brutalism' ? 'brutalism' : 'default',
+      brutalismPalette: vc.brutalismPalette
+        ? resolveVCardBrutalismPalette(vc.brutalismPalette)
+        : INITIAL_VCARD_CONTENT.brutalismPalette,
       phones:
         Array.isArray(vc.phones) && vc.phones.length > 0
           ? vc.phones
@@ -98,6 +112,37 @@ function coerceContentData(
           : INITIAL_VCARD_CONTENT.emails,
       socials: Array.isArray(vc.socials) ? vc.socials : [],
       skills: Array.isArray(vc.skills) ? vc.skills : [],
+    };
+  }
+  if (targetType === 'business') {
+    const biz = (raw || {}) as Partial<BusinessContent>;
+    return {
+      ...INITIAL_BUSINESS_CONTENT,
+      ...biz,
+      type: 'business',
+      designStyle: biz.designStyle === 'brutalism' ? 'brutalism' : 'default',
+      brutalismPalette: biz.brutalismPalette
+        ? resolveVCardBrutalismPalette(biz.brutalismPalette)
+        : INITIAL_BUSINESS_CONTENT.brutalismPalette,
+      buttons: Array.isArray(biz.buttons) ? biz.buttons : INITIAL_BUSINESS_CONTENT.buttons,
+      weekdayGroupIntervals:
+        Array.isArray(biz.weekdayGroupIntervals) && biz.weekdayGroupIntervals.length > 0
+          ? biz.weekdayGroupIntervals
+          : INITIAL_BUSINESS_CONTENT.weekdayGroupIntervals,
+      days: {
+        ...INITIAL_BUSINESS_CONTENT.days,
+        ...(biz.days || {}),
+      },
+      phones:
+        Array.isArray(biz.phones) && biz.phones.length > 0
+          ? biz.phones
+          : INITIAL_BUSINESS_CONTENT.phones,
+      emails:
+        Array.isArray(biz.emails) && biz.emails.length > 0
+          ? biz.emails
+          : INITIAL_BUSINESS_CONTENT.emails,
+      facilities: Array.isArray(biz.facilities) ? biz.facilities : [],
+      socials: Array.isArray(biz.socials) ? biz.socials : [],
     };
   }
   const u = (raw || {}) as Partial<UrlContent>;
@@ -307,7 +352,9 @@ export default function QRGeneratorPage() {
     const hasDraftData =
       content.type === 'vcard'
         ? Boolean(content.fullName.trim() || content.qrName.trim() || content.avatarDataUrl)
-        : Boolean(content.url.trim() || content.qrName.trim());
+        : content.type === 'business'
+          ? Boolean(content.companyName.trim() || content.qrName.trim() || content.coverDataUrl)
+          : Boolean(content.url.trim() || content.qrName.trim());
     if (!hasDraftData && step === 1) return;
     persistQRDraft(step, maxReachedStep, content, style, passwordOpts, shortCode);
   }, [id, savedId, step, maxReachedStep, content, style, passwordOpts, shortCode]);
@@ -476,6 +523,11 @@ export default function QRGeneratorPage() {
       setHasUnsavedChanges(false);
       setHasDownloaded(false);
       setErrors({});
+    } else if (type === 'business' && content.type !== 'business') {
+      setContent(INITIAL_BUSINESS_CONTENT);
+      setHasUnsavedChanges(false);
+      setHasDownloaded(false);
+      setErrors({});
     } else if (type === 'url' && content.type !== 'url') {
       setContent(INITIAL_URL_CONTENT);
       setHasUnsavedChanges(false);
@@ -505,6 +557,31 @@ export default function QRGeneratorPage() {
           .map((s) => ({ ...s, url: normalizeUrl(s.url), label: s.label.trim() })),
       };
     }
+    if (raw.type === 'business') {
+      return {
+        ...raw,
+        qrName: raw.qrName.trim(),
+        companyName: raw.companyName.trim(),
+        headline: raw.headline.trim(),
+        subtitle: raw.subtitle.trim(),
+        contactName: raw.contactName.trim(),
+        summary: raw.summary.trim(),
+        website: raw.website.trim() ? normalizeUrl(raw.website) : '',
+        addressUrl: raw.addressUrl.trim() ? normalizeUrl(raw.addressUrl) : '',
+        buttons: raw.buttons
+          .filter((b) => b.label.trim().length > 0 || b.url.trim().length > 0)
+          .map((b) => ({
+            ...b,
+            label: b.label.trim(),
+            url: b.url.trim() ? normalizeUrl(b.url) : '',
+          })),
+        phones: raw.phones.map((p) => ({ ...p, number: p.number.trim() })),
+        emails: raw.emails.map((em) => ({ ...em, email: em.email.trim() })),
+        socials: raw.socials
+          .filter((s) => s.url.trim().length > 0)
+          .map((s) => ({ ...s, url: normalizeUrl(s.url), label: s.label.trim() })),
+      };
+    }
     return {
       type: 'url',
       url: normalizeUrl(raw.url),
@@ -524,9 +601,14 @@ export default function QRGeneratorPage() {
 
   const handleInvalidValidation = (validationErrors: Record<string, string>) => {
     setErrors(validationErrors);
+    const buttonErrKey = Object.keys(validationErrors).find((k) =>
+      k.startsWith('button_')
+    );
     const step2Err =
       validationErrors.url ||
       validationErrors.fullName ||
+      validationErrors.companyName ||
+      (buttonErrKey ? validationErrors[buttonErrKey] : undefined) ||
       validationErrors.website ||
       validationErrors.emails ||
       validationErrors.socials ||
@@ -654,8 +736,15 @@ export default function QRGeneratorPage() {
 
   const handleNext = () => {
     if (step === 1) {
-      if (selectedType !== 'url' && selectedType !== 'vcard') {
-        void showToast('info', 'Pilih URL Situs Web atau vCard untuk melanjutkan.');
+      if (
+        selectedType !== 'url' &&
+        selectedType !== 'vcard' &&
+        selectedType !== 'business'
+      ) {
+        void showToast(
+          'info',
+          'Pilih URL Situs Web, vCard, atau Halaman Bisnis untuk melanjutkan.'
+        );
         return;
       }
       setStep(2);
@@ -809,7 +898,7 @@ export default function QRGeneratorPage() {
   const handleShowHelp = () => {
     void showInfo(
       'Panduan Generator Kode QR',
-      '1. Pilih jenis URL Situs Web.\n2. Masukkan alamat situs web tujuan dan nama QR (opsional).\n3. Kustomisasi bingkai, pola titik, sudut, logo, dan kata sandi opsional. Setiap QR otomatis tersimpan aman di akun Anda dan dapat dikelola melalui menu Riwayat QR Code.'
+      '1. Pilih jenis Kode QR (URL Situs Web, vCard, atau Halaman Bisnis).\n2. Lengkapi konten profil, jam buka, tombol aksi, atau tautan tujuan.\n3. Kustomisasi bingkai, pola titik, domain, logo, dan kata sandi opsional. Setiap QR tersimpan aman di akun Anda dan dapat dikelola lewat menu Riwayat QR.'
     );
   };
 
@@ -837,7 +926,7 @@ export default function QRGeneratorPage() {
               </span>
             </div>
             <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold">
-              {selectedType === 'vcard' ? 'vCard' : 'URL Situs Web'}
+              {QR_TYPE_LABELS[selectedType ?? 'url'] || 'URL Situs Web'}
             </span>
           </div>
 
@@ -920,6 +1009,13 @@ export default function QRGeneratorPage() {
                       onChange={updateContent}
                       onPreviewSplash={() => setSplashPreviewNonce((n) => n + 1)}
                     />
+                  ) : content.type === 'business' ? (
+                    <QRBusinessContentForm
+                      content={content}
+                      errors={errors}
+                      onChange={updateContent}
+                      onPreviewSplash={() => setSplashPreviewNonce((n) => n + 1)}
+                    />
                   ) : (
                     <QRUrlContentForm
                       content={content}
@@ -939,7 +1035,7 @@ export default function QRGeneratorPage() {
                   transition={{ duration: 0.2 }}
                 >
                   <QRCustomizer
-                    qrTypeLabel={selectedType === 'vcard' ? 'vCard' : 'URL Situs Web'}
+                    qrTypeLabel={QR_TYPE_LABELS[selectedType ?? 'url'] || 'URL Situs Web'}
                     style={style}
                     passwordOpts={passwordOpts}
                     errors={errors}

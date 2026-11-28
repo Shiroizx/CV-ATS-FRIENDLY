@@ -68,14 +68,15 @@ export default function QRImageEditorModal({
   const swapped = normalizedRot === 90 || normalizedRot === 270;
   const orientedW = swapped ? naturalSize.h : naturalSize.w;
   const orientedH = swapped ? naturalSize.w : naturalSize.h;
+  const isCircleCrop = Boolean(squareCrop && !(aspectRatio && aspectRatio > 0));
 
   let frameW = 196;
   let frameH = 196;
-  if (squareCrop) {
+  if (isCircleCrop) {
     frameW = 196;
     frameH = 196;
   } else if (aspectRatio && aspectRatio > 0) {
-    frameW = 224;
+    frameW = 240;
     frameH = Math.max(80, Math.round(frameW / aspectRatio));
   } else {
     const fit = Math.min(196 / Math.max(1, orientedW), 196 / Math.max(1, orientedH));
@@ -151,7 +152,7 @@ export default function QRImageEditorModal({
         flipH,
         flipV,
         rotateDeg,
-        squareCrop,
+        squareCrop: isCircleCrop,
         aspectRatio,
         offsetX: layout.clampedOffsetX,
         offsetY: layout.clampedOffsetY,
@@ -208,7 +209,7 @@ export default function QRImageEditorModal({
               <div
                 aria-hidden="true"
                 className={`absolute inset-0 z-0 ${
-                  squareCrop ? 'rounded-full bg-white' : 'bg-white'
+                  isCircleCrop ? 'rounded-full bg-white' : 'bg-white'
                 }`}
               />
               <img
@@ -240,7 +241,7 @@ export default function QRImageEditorModal({
               <div
                 aria-hidden="true"
                 className={`absolute inset-0 z-20 pointer-events-none ${
-                  squareCrop
+                  isCircleCrop
                     ? 'rounded-full border-2 border-dashed border-white/95'
                     : aspectRatio
                       ? 'border-2 border-dashed border-white/95'

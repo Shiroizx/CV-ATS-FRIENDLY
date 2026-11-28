@@ -11,12 +11,18 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { getPublicQRByCode, verifyPublicQRPassword } from '../lib/qrService';
-import { extractDisplayHost, sanitizeExternalUrl } from '../lib/qrHelpers';
-import type { VCardContent } from '../types/qrGenerator';
+import {
+  extractDisplayHost,
+  resolveBusinessPreviewChrome,
+  resolveVCardPreviewChrome,
+  sanitizeExternalUrl,
+} from '../lib/qrHelpers';
+import type { BusinessContent, VCardContent } from '../types/qrGenerator';
 import IPhone18ProMaxMockup from '../components/qr-generator/IPhone18ProMaxMockup';
 import VCardMobileView, {
   VCardSplashOverlay,
 } from '../components/qr-generator/VCardMobileView';
+import BusinessMobileView from '../components/qr-generator/BusinessMobileView';
 
 function useIsDesktopSm(): boolean {
   const [isDesktop, setIsDesktop] = useState(() =>
@@ -51,6 +57,9 @@ export default function PublicQRViewerPage({
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [unlockedUrl, setUnlockedUrl] = useState<string | null>(null);
   const [vcardContent, setVcardContent] = useState<VCardContent | null>(null);
+  const [businessContent, setBusinessContent] = useState<BusinessContent | null>(
+    null
+  );
   const [splashVisible, setSplashVisible] = useState(false);
 
   const [password, setPassword] = useState('');
@@ -84,6 +93,11 @@ export default function PublicQRViewerPage({
         setRequiresPassword(true);
       } else if (data.content_data?.type === 'vcard') {
         setVcardContent(data.content_data);
+        if (data.content_data.splashDataUrl) {
+          setSplashVisible(true);
+        }
+      } else if (data.content_data?.type === 'business') {
+        setBusinessContent(data.content_data);
         if (data.content_data.splashDataUrl) {
           setSplashVisible(true);
         }
@@ -138,6 +152,15 @@ export default function PublicQRViewerPage({
       return;
     }
 
+    if (res.content_data.type === 'business') {
+      setBusinessContent(res.content_data);
+      if (res.content_data.splashDataUrl) {
+        setSplashVisible(true);
+      }
+      setRequiresPassword(false);
+      return;
+    }
+
     const safe = sanitizeExternalUrl(res.content_data.url || '');
     setUnlockedUrl(safe);
     setRequiresPassword(false);
@@ -146,8 +169,8 @@ export default function PublicQRViewerPage({
     }
   };
 
-  if (vcardContent) {
-    const footerLink = isSubdomainView ? (
+  const renderBrandFooter = () =>
+    isSubdomainView ? (
       <a
         href="https://www.freebuildcv.tech"
         className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-2 pb-1"
@@ -165,16 +188,73 @@ export default function PublicQRViewerPage({
       </Link>
     );
 
+  if (businessContent) {
+    const footerLink = renderBrandFooter();
+    const chrome = resolveBusinessPreviewChrome(businessContent);
+
+    if (isDesktop) {
+      return (
+        <div className="min-h-screen bg-[#f7f9fc] flex flex-col items-center justify-center py-8 px-4 overflow-x-auto">
+          <IPhone18ProMaxMockup
+            exactSize
+            statusBarBg={chrome.statusBarBg}
+            overlayStatusBar={false}
+            statusBarLightText={chrome.statusBarLightText}
+            bottomBg={chrome.bottomBg}
+            splashVisible={splashVisible}
+            splashImageUrl={businessContent.splashDataUrl}
+            fadeSplashBackdropIn={false}
+            onDismissSplash={() => setSplashVisible(false)}
+          >
+            <BusinessMobileView
+              content={businessContent}
+              playSplashOnMount={false}
+              compact={false}
+              footerNote={footerLink}
+            />
+          </IPhone18ProMaxMockup>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="min-h-dvh flex flex-col w-full"
+        style={{ backgroundColor: chrome.bottomBg }}
+      >
+        {businessContent.splashDataUrl && (
+          <VCardSplashOverlay
+            visible={splashVisible}
+            imageUrl={businessContent.splashDataUrl}
+            onDismiss={() => setSplashVisible(false)}
+            fadeBackdropIn={false}
+            fullScreen
+          />
+        )}
+        <BusinessMobileView
+          content={businessContent}
+          playSplashOnMount={false}
+          compact={false}
+          footerNote={footerLink}
+        />
+      </div>
+    );
+  }
+
+  if (vcardContent) {
+    const footerLink = renderBrandFooter();
+    const chrome = resolveVCardPreviewChrome(vcardContent);
+
     if (isDesktop) {
       const hasBanner = Boolean(vcardContent.bannerDataUrl);
       return (
         <div className="min-h-screen bg-[#f7f9fc] flex flex-col items-center justify-center py-8 px-4 overflow-x-auto">
           <IPhone18ProMaxMockup
             exactSize
-            statusBarBg={vcardContent.primaryColor}
-            overlayStatusBar={hasBanner}
-            statusBarLightText={hasBanner}
-            bottomBg={vcardContent.secondaryColor}
+            statusBarBg={chrome.statusBarBg}
+            overlayStatusBar={chrome.overlayStatusBar}
+            statusBarLightText={chrome.statusBarLightText}
+            bottomBg={chrome.bottomBg}
             splashVisible={splashVisible}
             splashImageUrl={vcardContent.splashDataUrl}
             fadeSplashBackdropIn={false}
@@ -193,7 +273,10 @@ export default function PublicQRViewerPage({
     }
 
     return (
-      <div className="min-h-dvh bg-white flex flex-col w-full">
+      <div
+        className="min-h-dvh flex flex-col w-full"
+        style={{ backgroundColor: chrome.bottomBg }}
+      >
         {vcardContent.splashDataUrl && (
           <VCardSplashOverlay
             visible={splashVisible}
