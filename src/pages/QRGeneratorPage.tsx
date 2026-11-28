@@ -311,6 +311,7 @@ export default function QRGeneratorPage() {
   const [isProvisioningPartner, setIsProvisioningPartner] = useState<boolean>(() =>
     Boolean(initialQueryPartnerToken)
   );
+  const [pendingPartnerEditId, setPendingPartnerEditId] = useState<string | null>(null);
   const [partnerContext, setPartnerContext] = useState<QRPartnerContext | null>(null);
   const [partnerError, setPartnerError] = useState<string | null>(null);
   const [partnerCallbackUrl, setPartnerCallbackUrl] = useState<string | null>(null);
@@ -449,11 +450,11 @@ export default function QRGeneratorPage() {
       setPartnerError(null);
       setPartnerContext(context);
 
-      // Jika datang untuk mengedit vCard yang sudah ada, langsung arahkan ke editor QR-nya
+      // Jika datang untuk mengedit vCard yang sudah ada, tunggu AuthContext.user sinkron lalu arahkan ke editor QR-nya
       const targetEditId = resolvedEditQrId || context.editQrId || '';
       if (targetEditId && !context.createNew && !id && isFreshLaunch) {
         hasFreshPartnerLaunchRef.current = false;
-        navigate(`/qr-generator/${targetEditId}`, { replace: true });
+        setPendingPartnerEditId(targetEditId);
         return;
       }
 
@@ -550,6 +551,12 @@ export default function QRGeneratorPage() {
       cancelled = true;
     };
   }, [partnerToken, id, savedId, navigate]);
+
+  // Tunggu AuthContext.user benar-benar terisi pasca verifyOtp sebelum pindah ke route /qr-generator/:id (ProtectedRoute)
+  useEffect(() => {
+    if (!pendingPartnerEditId || !user || id) return;
+    navigate(`/qr-generator/${pendingPartnerEditId}`, { replace: true });
+  }, [pendingPartnerEditId, user, id, navigate]);
 
   // Ambil daftar base domain yang diizinkan (freebuildcv.tech + domain partner terverifikasi)
   useEffect(() => {
