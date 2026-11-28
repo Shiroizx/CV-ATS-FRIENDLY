@@ -44,7 +44,8 @@ function QRCardThumbnail({ qr }: { qr: SavedQRCode }) {
   const payload = resolveUrlQRPayload(
     origin,
     qr.short_code,
-    qr.style_options?.domainMode ?? 'default'
+    qr.style_options?.domainMode ?? 'default',
+    qr.public_domain || qr.style_options?.publicDomain
   );
   const mergedStyle = { ...DEFAULT_QR_STYLE, ...qr.style_options };
 
@@ -136,7 +137,8 @@ export default function MyQRCodesPage() {
       const payload = resolveUrlQRPayload(
         origin,
         qr.short_code,
-        qr.style_options?.domainMode ?? 'default'
+        qr.style_options?.domainMode ?? 'default',
+        qr.public_domain || qr.style_options?.publicDomain
       );
       await exportQRFile(
         payload,
@@ -162,7 +164,8 @@ export default function MyQRCodesPage() {
     const payload = resolveUrlQRPayload(
       window.location.origin,
       qr.short_code,
-      qr.style_options?.domainMode ?? 'default'
+      qr.style_options?.domainMode ?? 'default',
+      qr.public_domain || qr.style_options?.publicDomain
     );
     await navigator.clipboard.writeText(payload);
     void showToast('success', 'Tautan QR disalin ke clipboard!');
@@ -276,6 +279,12 @@ export default function MyQRCodesPage() {
                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
                           Aktif • {qr.scan_count}× scan
                         </span>
+                        {(qr.public_domain || qr.style_options?.publicDomain) &&
+                          (qr.public_domain || qr.style_options?.publicDomain) !== 'freebuildcv.tech' && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/70 text-[11px] font-mono font-semibold">
+                              {qr.short_code}.{qr.public_domain || qr.style_options?.publicDomain}
+                            </span>
+                          )}
                         {qr.requires_password && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[11px] font-semibold">
                             <Lock className="w-3 h-3" />
@@ -293,7 +302,8 @@ export default function MyQRCodesPage() {
                           href={resolveQRViewerLink(
                             window.location.origin,
                             qr.short_code,
-                            qr.style_options?.domainMode ?? 'default'
+                            qr.style_options?.domainMode ?? 'default',
+                            qr.public_domain || qr.style_options?.publicDomain
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -316,7 +326,8 @@ export default function MyQRCodesPage() {
                           href={resolveQRViewerLink(
                             window.location.origin,
                             qr.short_code,
-                            qr.style_options?.domainMode ?? 'default'
+                            qr.style_options?.domainMode ?? 'default',
+                            qr.public_domain || qr.style_options?.publicDomain
                           )}
                           target="_blank"
                           rel="noopener noreferrer"

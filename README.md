@@ -122,14 +122,17 @@ src/
 
 ## 🗄️ Database Setup
 
-Jalankan SQL scripts di Supabase SQL Editor:
+Jalankan SQL scripts (tersedia di folder `sql/`) di Supabase SQL Editor:
 
-1. `sql_admin_setup.sql` - Setup admin users
-2. `sql_user_resumes_setup.sql` - Setup user resumes table
-3. `sql_download_limits_setup.sql` - Setup download limits
-4. `sql_download_history_setup.sql` - Setup download history
-5. `sql_spk_analytics.sql` - Setup SPK analytics
-6. `sql_cm_column.sql` - Setup creative management columns
+1. `sql/sql_admin_setup.sql` - Setup admin users
+2. `sql/sql_user_resumes_setup.sql` - Setup user resumes table
+3. `sql/sql_download_limits_setup.sql` - Setup download limits
+4. `sql/sql_download_history_setup.sql` - Setup download history
+5. `sql/sql_spk_analytics.sql` - Setup SPK analytics
+6. `sql/sql_cm_column.sql` - Setup creative management columns
+7. `sql/sql_admin_guest_setup.sql` - Setup guest analytics & admin access
+8. `sql/sql_qr_codes_setup.sql` - Setup dynamic QR Codes & vCard/Business pages
+9. `sql/sql_qr_partner_domains_setup.sql` - Setup multi-domain partner QR/vCard (`*.narainstitute.net`) & verifikasi token HMAC
 
 ## 🔐 Environment Variables
 

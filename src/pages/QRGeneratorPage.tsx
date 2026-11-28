@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Building2,
+  CheckCircle2,
   ChevronDown,
   Download,
+  ExternalLink,
   Eye,
   FolderClock,
   HelpCircle,
@@ -16,10 +20,13 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import type {
   BusinessContent,
+  QRAllowedDomainOption,
   QRContentData,
+  QRPartnerContext,
   QRPasswordOptions,
   QRStyleOptions,
   QRType,
+  SavedQRCode,
   UrlContent,
   VCardContent,
   WizardStep,
@@ -32,10 +39,12 @@ import {
 } from '../types/qrGenerator';
 import {
   CUSTOM_DOMAIN_CREDIT_COST,
+  PUBLIC_QR_DOMAIN,
   checkQRScannability,
   generateDomainSuggestions,
   generateShortCode,
   getQRDisplayTitle,
+  normalizePublicQRDomain,
   normalizeUrl,
   resolveUrlQRPayload,
   resolveVCardBrutalismPalette,
@@ -45,10 +54,13 @@ import {
 } from '../lib/qrHelpers';
 import { exportQRFile } from '../lib/qrExport';
 import {
+  DEFAULT_ALLOWED_DOMAIN_OPTION,
   checkQRSlugAvailable,
   consumeQRDownloadCredit,
+  getAllowedQRDomains,
   getQRCodeById,
   saveUserQR,
+  verifyQRPartnerToken,
 } from '../lib/qrService';
 import type { SlugAvailabilityStatus } from '../components/qr-generator/QRDomainSelectorCard';
 import { getRemainingDownloads } from '../lib/downloadCredit';
@@ -72,6 +84,55 @@ import QRPreview from '../components/qr-generator/QRPreview';
 
 const DRAFT_STORAGE_KEY = 'freebuild_qr_draft_v1';
 const DRAFT_PWD_KEY = 'freebuild_qr_pwd_v1';
+const PARTNER_TOKEN_STORAGE_KEY = 'freebuild_qr_partner_token_v1';
+
+function readStoredPartnerToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const val = sessionStorage.getItem(PARTNER_TOKEN_STORAGE_KEY);
+    return val && val.trim() ? val.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function storePartnerToken(token: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (token && token.trim()) {
+      sessionStorage.setItem(PARTNER_TOKEN_STORAGE_KEY, token.trim());
+    } else {
+      sessionStorage.removeItem(PARTNER_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Abaikan jika sessionStorage tidak tersedia
+  }
+}
+
+function buildPartnerCallbackUrl(
+  partner: QRPartnerContext,
+  saved: SavedQRCode,
+  liveUrl: string
+): string | null {
+  if (!partner.returnUrl) return null;
+  try {
+    const url = new URL(partner.returnUrl);
+    url.searchParams.set('qr_id', saved.id);
+    url.searchParams.set('slug', saved.short_code);
+    url.searchParams.set(
+      'domain',
+      normalizePublicQRDomain(saved.public_domain || partner.domain)
+    );
+    url.searchParams.set('url', liveUrl);
+    url.searchParams.set('title', saved.title || '');
+    if (partner.callbackState) {
+      url.searchParams.set('state', partner.callbackState);
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
 
 const QR_TYPE_LABELS: Partial<Record<QRType, string>> = {
   url: 'URL Situs Web',
@@ -227,27 +288,65 @@ function clearQRDraft(): void {
 
 export default function QRGeneratorPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [initialDraft] = useState<StoredQRDraft | null>(() => readQRDraft(Boolean(id)));
+  const initialQueryPartnerToken = searchParams.get('partner_token')?.trim() || null;
+  const initialQueryType = searchParams.get('type')?.trim().toLowerCase() || null;
+  const hasFreshPartnerLaunchRef = useRef<boolean>(Boolean(initialQueryPartnerToken));
+  const partnerPrefillAppliedRef = useRef<boolean>(false);
 
-  const [step, setStep] = useState<WizardStep>(() => initialDraft?.step ?? 1);
-  const [maxReachedStep, setMaxReachedStep] = useState<WizardStep>(
-    () => initialDraft?.maxReachedStep ?? 1
+  const [partnerToken, setPartnerToken] = useState<string | null>(() => {
+    if (initialQueryPartnerToken) {
+      storePartnerToken(initialQueryPartnerToken);
+      return initialQueryPartnerToken;
+    }
+    return readStoredPartnerToken();
+  });
+  const [partnerContext, setPartnerContext] = useState<QRPartnerContext | null>(null);
+  const [partnerError, setPartnerError] = useState<string | null>(null);
+  const [partnerCallbackUrl, setPartnerCallbackUrl] = useState<string | null>(null);
+  const [allowedDomainsFromServer, setAllowedDomainsFromServer] = useState<
+    QRAllowedDomainOption[]
+  >([DEFAULT_ALLOWED_DOMAIN_OPTION]);
+
+  const [initialDraft] = useState<StoredQRDraft | null>(() =>
+    readQRDraft(Boolean(id) || Boolean(initialQueryPartnerToken))
   );
-  const [selectedType, setSelectedType] = useState<QRType | null>(
-    () => initialDraft?.content.type ?? 'url'
-  );
-  const [content, setContent] = useState<QRContentData>(
-    () => initialDraft?.content ?? INITIAL_URL_CONTENT
-  );
+
+  const [step, setStep] = useState<WizardStep>(() => {
+    if (initialDraft) return initialDraft.step;
+    if (initialQueryType === 'vcard' || initialQueryType === 'business' || initialQueryPartnerToken) {
+      return 2;
+    }
+    return 1;
+  });
+  const [maxReachedStep, setMaxReachedStep] = useState<WizardStep>(() => {
+    if (initialDraft) return initialDraft.maxReachedStep;
+    if (initialQueryType === 'vcard' || initialQueryType === 'business' || initialQueryPartnerToken) {
+      return 2;
+    }
+    return 1;
+  });
+  const [selectedType, setSelectedType] = useState<QRType | null>(() => {
+    if (initialDraft) return initialDraft.content.type;
+    if (initialQueryType === 'business') return 'business';
+    if (initialQueryType === 'vcard' || initialQueryPartnerToken) return 'vcard';
+    return 'url';
+  });
+  const [content, setContent] = useState<QRContentData>(() => {
+    if (initialDraft) return initialDraft.content;
+    if (initialQueryType === 'business') return INITIAL_BUSINESS_CONTENT;
+    if (initialQueryType === 'vcard' || initialQueryPartnerToken) return INITIAL_VCARD_CONTENT;
+    return INITIAL_URL_CONTENT;
+  });
   const [splashPreviewNonce, setSplashPreviewNonce] = useState(0);
   const [style, setStyle] = useState<QRStyleOptions>(
     () => initialDraft?.style ?? DEFAULT_QR_STYLE
   );
   const [passwordOpts, setPasswordOpts] = useState<QRPasswordOptions>(() =>
-    readDraftPassword(Boolean(id))
+    readDraftPassword(Boolean(id) || Boolean(initialQueryPartnerToken))
   );
   const [shortCode, setShortCode] = useState<string>(
     () => initialDraft?.shortCode ?? generateShortCode(8)
@@ -263,6 +362,7 @@ export default function QRGeneratorPage() {
   );
   const [slugCheckResult, setSlugCheckResult] = useState<{
     slug: string;
+    domain: string;
     status: 'available' | 'taken';
   } | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -320,31 +420,186 @@ export default function QRGeneratorPage() {
     };
   }, [user]);
 
+  // Bersihkan query partner_token dari URL bar setelah disimpan di sessionStorage
+  useEffect(() => {
+    if (!searchParams.has('partner_token')) return;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('partner_token');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Verifikasi Signed Partner Token (mis. dari Dashboard Laravel Nara Institute)
+  useEffect(() => {
+    if (!partnerToken) return;
+
+    let cancelled = false;
+    void verifyQRPartnerToken(partnerToken).then(({ context, error }) => {
+      if (cancelled) return;
+      if (error || !context) {
+        setPartnerContext(null);
+        setPartnerError(error || 'Token integrasi partner tidak valid.');
+        storePartnerToken(null);
+        setPartnerToken(null);
+        return;
+      }
+
+      setPartnerError(null);
+      setPartnerContext(context);
+
+      // Jika datang untuk mengedit vCard yang sudah terhubung & sudah login, langsung buka editornya
+      if (context.editQrId && !id && user && hasFreshPartnerLaunchRef.current) {
+        hasFreshPartnerLaunchRef.current = false;
+        navigate(`/qr-generator/${context.editQrId}`, { replace: true });
+        return;
+      }
+
+      // Prefill otomatis data vCard & domain partner untuk sesi baru
+      if (!id && !savedId && !partnerPrefillAppliedRef.current) {
+        partnerPrefillAppliedRef.current = true;
+        const cleanSuggestedSlug = sanitizeSubdomainInput(context.suggestedSlug || '');
+
+        if (hasFreshPartnerLaunchRef.current) {
+          setSelectedType('vcard');
+          setStep(2);
+          setMaxReachedStep(2);
+          setContent({
+            ...INITIAL_VCARD_CONTENT,
+            qrName: context.userName ? `vCard ${context.userName}` : '',
+            fullName: context.userName || '',
+            company: context.userCompany || context.orgName || '',
+            profession: context.userPosition || '',
+            website: context.userWebsite || `https://${context.domain}`,
+            emails: context.userEmail
+              ? [{ id: 'email-1', label: 'Kerja', email: context.userEmail }]
+              : INITIAL_VCARD_CONTENT.emails,
+            phones: context.userPhone
+              ? [{ id: 'phone-1', label: 'Cara Kerja', number: context.userPhone }]
+              : INITIAL_VCARD_CONTENT.phones,
+          });
+        }
+
+        setStyle((prev) => ({
+          ...prev,
+          publicDomain: context.domain,
+          domainMode: cleanSuggestedSlug ? 'custom' : prev.domainMode ?? 'custom',
+        }));
+
+        if (cleanSuggestedSlug && hasFreshPartnerLaunchRef.current) {
+          setCustomSlugInput(cleanSuggestedSlug);
+          setShortCode(cleanSuggestedSlug);
+        }
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [partnerToken, id, savedId, user, navigate]);
+
+  // Ambil daftar base domain yang diizinkan (freebuildcv.tech + domain partner terverifikasi)
+  useEffect(() => {
+    let cancelled = false;
+    void getAllowedQRDomains(partnerContext?.token ?? partnerToken).then((domains) => {
+      if (!cancelled) {
+        setAllowedDomainsFromServer(domains);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, partnerContext?.token, partnerToken]);
+
+  const availableDomains = useMemo<QRAllowedDomainOption[]>(() => {
+    const byDomain = new Map<string, QRAllowedDomainOption>();
+    for (const item of allowedDomainsFromServer) {
+      byDomain.set(normalizePublicQRDomain(item.domain), item);
+    }
+    if (partnerContext) {
+      byDomain.set(normalizePublicQRDomain(partnerContext.domain), {
+        domain: normalizePublicQRDomain(partnerContext.domain),
+        orgSlug: partnerContext.orgSlug,
+        orgName: partnerContext.orgName,
+        waiveCredit: partnerContext.waiveCredit,
+        authSource: 'partner_token',
+      });
+    }
+    const currentStyleDomain = normalizePublicQRDomain(style.publicDomain);
+    if (savedId && currentStyleDomain !== PUBLIC_QR_DOMAIN && !byDomain.has(currentStyleDomain)) {
+      byDomain.set(currentStyleDomain, {
+        domain: currentStyleDomain,
+        orgSlug: currentStyleDomain.split('.')[0] || 'partner',
+        orgName: currentStyleDomain,
+        waiveCredit: true,
+        authSource: 'partner_token',
+      });
+    }
+    if (!byDomain.has(PUBLIC_QR_DOMAIN)) {
+      byDomain.set(PUBLIC_QR_DOMAIN, DEFAULT_ALLOWED_DOMAIN_OPTION);
+    }
+    return Array.from(byDomain.values()).sort((a, b) => {
+      if (a.domain === PUBLIC_QR_DOMAIN && b.domain !== PUBLIC_QR_DOMAIN) return 1;
+      if (a.domain !== PUBLIC_QR_DOMAIN && b.domain === PUBLIC_QR_DOMAIN) return -1;
+      return a.domain.localeCompare(b.domain);
+    });
+  }, [allowedDomainsFromServer, partnerContext, savedId, style.publicDomain]);
+
+  const selectedPublicDomain = useMemo(() => {
+    const candidate = normalizePublicQRDomain(style.publicDomain);
+    if (availableDomains.some((d) => d.domain === candidate)) {
+      return candidate;
+    }
+    return PUBLIC_QR_DOMAIN;
+  }, [style.publicDomain, availableDomains]);
+
+  const selectedDomainOption = useMemo(
+    () =>
+      availableDomains.find((d) => d.domain === selectedPublicDomain) ??
+      DEFAULT_ALLOWED_DOMAIN_OPTION,
+    [availableDomains, selectedPublicDomain]
+  );
+
+  const waiveCustomDomainCredit = Boolean(selectedDomainOption.waiveCredit);
+
   // Cek ketersediaan subdomain kustom saat user mengetik di langkah 3
   useEffect(() => {
     if (step !== 3 || !user) return;
     if ((style.domainMode ?? 'default') !== 'custom') return;
     const clean = sanitizeSubdomainInput(customSlugInput);
     if (!validateSubdomainSlug(clean).valid) return;
-    if (style.paidCustomDomainSlug === clean && savedId) return;
+    const paidMatchesCurrent =
+      (style.paidCustomDomainSlug === clean ||
+        style.paidCustomDomainSlug === `${selectedPublicDomain}:${clean}`) &&
+      Boolean(savedId);
+    if (paidMatchesCurrent) return;
 
     let cancelled = false;
     const timer = setTimeout(() => {
-      void checkQRSlugAvailable(clean, savedId).then(({ available }) => {
-        if (!cancelled) {
-          setSlugCheckResult({
-            slug: clean,
-            status: available ? 'available' : 'taken',
-          });
+      void checkQRSlugAvailable(clean, savedId, selectedPublicDomain).then(
+        ({ available }) => {
+          if (!cancelled) {
+            setSlugCheckResult({
+              slug: clean,
+              domain: selectedPublicDomain,
+              status: available ? 'available' : 'taken',
+            });
+          }
         }
-      });
+      );
     }, 380);
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [step, user, style.domainMode, style.paidCustomDomainSlug, customSlugInput, savedId]);
+  }, [
+    step,
+    user,
+    style.domainMode,
+    style.paidCustomDomainSlug,
+    customSlugInput,
+    savedId,
+    selectedPublicDomain,
+  ]);
 
   // Simpan draft otomatis di browser agar tidak hilang saat pengguna diarahkan ke Login/Register
   useEffect(() => {
@@ -378,7 +633,14 @@ export default function QRGeneratorPage() {
         return;
       }
 
-      const loadedStyle = { ...DEFAULT_QR_STYLE, ...data.style_options };
+      const loadedDomain = normalizePublicQRDomain(
+        data.public_domain || data.style_options?.publicDomain
+      );
+      const loadedStyle: QRStyleOptions = {
+        ...DEFAULT_QR_STYLE,
+        ...data.style_options,
+        publicDomain: loadedDomain,
+      };
       const loadedMode = loadedStyle.domainMode ?? 'default';
       setSavedId(data.id);
       setShortCode(data.short_code);
@@ -414,9 +676,13 @@ export default function QRGeneratorPage() {
     (style.domainMode ?? 'default') !== 'custom' ||
     !validateSubdomainSlug(cleanCustomSlug).valid
       ? 'idle'
-      : style.paidCustomDomainSlug === cleanCustomSlug && savedId
+      : (style.paidCustomDomainSlug === cleanCustomSlug ||
+            style.paidCustomDomainSlug ===
+              `${selectedPublicDomain}:${cleanCustomSlug}`) &&
+          savedId
         ? 'available'
-        : slugCheckResult?.slug === cleanCustomSlug
+        : slugCheckResult?.slug === cleanCustomSlug &&
+            slugCheckResult?.domain === selectedPublicDomain
           ? slugCheckResult.status
           : user
             ? 'checking'
@@ -432,7 +698,8 @@ export default function QRGeneratorPage() {
   const qrPayload = resolveUrlQRPayload(
     origin,
     activeSlug,
-    style.domainMode ?? 'default'
+    style.domainMode ?? 'default',
+    selectedPublicDomain
   );
 
   const clearDomainError = () => {
@@ -443,6 +710,22 @@ export default function QRGeneratorPage() {
         return copy;
       });
     }
+  };
+
+  const handleSelectPublicDomain = (nextDomain: string) => {
+    const normalized = normalizePublicQRDomain(nextDomain);
+    setStyle((prev) => ({
+      ...prev,
+      publicDomain: normalized,
+      domainMode:
+        normalized !== PUBLIC_QR_DOMAIN && (prev.domainMode ?? 'default') === 'default'
+          ? 'custom'
+          : prev.domainMode ?? 'default',
+    }));
+    setSlugCheckResult(null);
+    setHasUnsavedChanges(true);
+    setHasDownloaded(false);
+    clearDomainError();
   };
 
   const handleSelectDefaultDomain = () => {
@@ -591,9 +874,11 @@ export default function QRGeneratorPage() {
 
   const isUsingCustomDomain = (style.domainMode ?? 'default') === 'custom';
   const isCustomDomainPaid = Boolean(
-    isUsingCustomDomain &&
-      style.paidCustomDomainSlug &&
-      style.paidCustomDomainSlug === activeSlug
+    waiveCustomDomainCredit ||
+      (isUsingCustomDomain &&
+        style.paidCustomDomainSlug &&
+        (style.paidCustomDomainSlug === activeSlug ||
+          style.paidCustomDomainSlug === `${selectedPublicDomain}:${activeSlug}`))
   );
   const needsCustomDomainCharge = Boolean(
     isUsingCustomDomain && !isCustomDomainPaid
@@ -628,34 +913,39 @@ export default function QRGeneratorPage() {
   const handleSaveToSupabase = async (options?: {
     skipCreditCharge?: boolean;
     styleOverride?: QRStyleOptions;
-  }): Promise<boolean> => {
+  }): Promise<{ ok: boolean; saved?: SavedQRCode; liveUrl?: string; callbackUrl?: string | null }> => {
     const validation = validateQRForm(content, passwordOpts);
     if (!validation.isValid) {
       handleInvalidValidation(validation.errors);
-      return false;
+      return { ok: false };
     }
 
-    const activeDomainMode = (options?.styleOverride ?? style).domainMode ?? 'default';
+    const activeStyle = options?.styleOverride ?? style;
+    const activeDomainMode = activeStyle.domainMode ?? 'default';
+    const targetDomain = normalizePublicQRDomain(
+      activeStyle.publicDomain || selectedPublicDomain
+    );
+
     if (activeDomainMode === 'custom') {
       const domainCheck = validateSubdomainSlug(activeSlug);
       if (!domainCheck.valid) {
         handleInvalidValidation({
           customDomain: domainCheck.error || 'Nama domain kustom tidak valid.',
         });
-        return false;
+        return { ok: false };
       }
     }
 
     if (activeDomainMode !== 'default') {
-      const avail = await checkQRSlugAvailable(activeSlug, savedId);
+      const avail = await checkQRSlugAvailable(activeSlug, savedId, targetDomain);
       if (!avail.available) {
         handleInvalidValidation({
           customDomain:
             activeDomainMode === 'custom'
-              ? 'Nama domain tersebut sudah dipakai QR lain. Pilih nama lain.'
-              : 'Saran domain tersebut sudah dipakai QR lain, pilih saran lainnya.',
+              ? `Nama domain "${activeSlug}.${targetDomain}" sudah dipakai QR lain. Pilih nama lain.`
+              : `Saran domain "${activeSlug}.${targetDomain}" sudah dipakai QR lain, pilih saran lainnya.`,
         });
-        return false;
+        return { ok: false };
       }
     }
 
@@ -667,28 +957,39 @@ export default function QRGeneratorPage() {
           'Kredit Tidak Cukup',
           `Memakai nama domain kustom sendiri memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus (sisa kredit Anda: ${preCheck.remaining}/${preCheck.max}). Pilih salah satu dari 4 saran domain gratis agar hemat kredit!`
         );
-        return false;
+        return { ok: false };
       }
       const confirmRes = await showConfirm(
         'Aktifkan Custom Domain?',
-        `Menggunakan nama domain kustom "${activeSlug}.freebuildcv.tech" memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit Anda setelah disimpan: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
+        `Menggunakan nama domain kustom "${activeSlug}.${targetDomain}" memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit Anda setelah disimpan: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
         `Ya, Pakai ${CUSTOM_DOMAIN_CREDIT_COST} Kredit`,
         'Batal'
       );
-      if (!confirmRes.isConfirmed) return false;
+      if (!confirmRes.isConfirmed) return { ok: false };
     }
 
     const normalizedContent = normalizeContentForSave(content);
-    const styleToSave =
-      options?.styleOverride ??
-      (needsCustomDomainCharge
-        ? { ...style, paidCustomDomainSlug: activeSlug }
-        : style);
+    const paidSlugMarker =
+      targetDomain === PUBLIC_QR_DOMAIN ? activeSlug : `${targetDomain}:${activeSlug}`;
+    const styleToSave: QRStyleOptions = {
+      ...(options?.styleOverride ??
+        (needsCustomDomainCharge
+          ? { ...style, paidCustomDomainSlug: paidSlugMarker }
+          : style)),
+      publicDomain: targetDomain,
+    };
 
     setIsSaving(true);
     const { data, error } = await saveUserQR({
       id: savedId,
       shortCode: activeSlug,
+      publicDomain: targetDomain,
+      partnerToken: partnerContext?.token ?? partnerToken,
+      orgSlug:
+        targetDomain !== PUBLIC_QR_DOMAIN
+          ? partnerContext?.orgSlug || selectedDomainOption.orgSlug
+          : null,
+      externalOwnerRef: partnerContext?.externalUserId || null,
       qrType: normalizedContent.type,
       title: getQRDisplayTitle(normalizedContent),
       content: normalizedContent,
@@ -703,21 +1004,33 @@ export default function QRGeneratorPage() {
         'Gagal Menyimpan',
         error?.message || 'Tidak dapat menyimpan Kode QR Anda. Silakan coba lagi.'
       );
-      return false;
+      return { ok: false };
     }
 
     if (needsCustomDomainCharge && !options?.skipCreditCharge) {
       const { credit } = await consumeQRDownloadCredit(
-        `Custom Domain (${activeSlug}.freebuildcv.tech)`,
+        `Custom Domain (${activeSlug}.${targetDomain})`,
         CUSTOM_DOMAIN_CREDIT_COST
       );
       setCreditInfo(credit);
     }
 
+    const savedDomain = normalizePublicQRDomain(data.public_domain || targetDomain);
+    const liveUrl = resolveUrlQRPayload(
+      origin,
+      data.short_code,
+      styleToSave.domainMode ?? 'default',
+      savedDomain
+    );
+    const callbackUrl = partnerContext
+      ? buildPartnerCallbackUrl(partnerContext, data, liveUrl)
+      : null;
+
     setContent(normalizedContent);
     setStyle(styleToSave);
     setSavedId(data.id);
     setShortCode(data.short_code);
+    setPartnerCallbackUrl(callbackUrl);
     setPasswordOpts({
       enabled: data.requires_password,
       password: '',
@@ -731,7 +1044,7 @@ export default function QRGeneratorPage() {
       setLoadedDataId(data.id);
       navigate(`/qr-generator/${data.id}`, { replace: true });
     }
-    return true;
+    return { ok: true, saved: data, liveUrl, callbackUrl };
   };
 
   const handleNext = () => {
@@ -844,27 +1157,34 @@ export default function QRGeneratorPage() {
       if (needsCustomDomainCharge) {
         const confirmDomain = await showConfirm(
           'Gunakan 3 Kredit Sekaligus?',
-          `Mengaktifkan & mengunduh QR dengan domain kustom "${activeSlug}.freebuildcv.tech" akan memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit setelahnya: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
+          `Mengaktifkan & mengunduh QR dengan domain kustom "${activeSlug}.${selectedPublicDomain}" akan memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit setelahnya: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
           `Ya, Lanjutkan (${CUSTOM_DOMAIN_CREDIT_COST} Kredit)`,
           'Batal'
         );
         if (!confirmDomain.isConfirmed) return;
       }
 
-      const nextStyle = needsCustomDomainCharge
-        ? { ...style, paidCustomDomainSlug: activeSlug }
-        : style;
+      const paidSlugMarker =
+        selectedPublicDomain === PUBLIC_QR_DOMAIN
+          ? activeSlug
+          : `${selectedPublicDomain}:${activeSlug}`;
+      const nextStyle: QRStyleOptions = {
+        ...(needsCustomDomainCharge
+          ? { ...style, paidCustomDomainSlug: paidSlugMarker }
+          : style),
+        publicDomain: selectedPublicDomain,
+      };
 
-      const ok = await handleSaveToSupabase({
+      const saveResult = await handleSaveToSupabase({
         skipCreditCharge: true,
         styleOverride: nextStyle,
       });
-      if (!ok) return;
+      if (!saveResult.ok) return;
 
       const titleSlug = getQRDisplayTitle(content);
       const { allowed, credit } = await consumeQRDownloadCredit(
         needsCustomDomainCharge
-          ? `${titleSlug} (${activeSlug}.freebuildcv.tech - ${format.toUpperCase()})`
+          ? `${titleSlug} (${activeSlug}.${selectedPublicDomain} - ${format.toUpperCase()})`
           : `${titleSlug} (${format.toUpperCase()})`,
         requiredCreditCost
       );
@@ -877,14 +1197,28 @@ export default function QRGeneratorPage() {
       const exportPayload = resolveUrlQRPayload(
         origin,
         activeSlug,
-        nextStyle.domainMode ?? 'default'
+        nextStyle.domainMode ?? 'default',
+        selectedPublicDomain
       );
       await exportQRFile(exportPayload, nextStyle, format, titleSlug);
       setHasDownloaded(true);
-      void showSuccess(
-        'Berhasil Disimpan & Diunduh',
-        `Kode QR (${format.toUpperCase()}) telah diunduh dan tersimpan di akun Anda. Sisa kredit download: ${credit.remaining}/${credit.max}.`
-      );
+      if (saveResult.callbackUrl && partnerContext) {
+        const syncConfirm = await showConfirm(
+          'Berhasil Disimpan & Diunduh',
+          `QR (${format.toUpperCase()}) telah diunduh untuk ${saveResult.liveUrl || exportPayload}. Sinkronkan sekarang ke Dashboard ${partnerContext.orgName}?`,
+          `Sinkron ke ${partnerContext.orgName}`,
+          'Tetap di Sini'
+        );
+        if (syncConfirm.isConfirmed) {
+          storePartnerToken(null);
+          window.location.href = saveResult.callbackUrl;
+        }
+      } else {
+        void showSuccess(
+          'Berhasil Disimpan & Diunduh',
+          `Kode QR (${format.toUpperCase()}) telah diunduh dan tersimpan di akun Anda. Sisa kredit download: ${credit.remaining}/${credit.max}.`
+        );
+      }
     } catch (err) {
       await showError(
         'Gagal Mengekspor QR',
@@ -972,6 +1306,72 @@ export default function QRGeneratorPage() {
         </div>
       </div>
 
+      {/* Banner Integrasi Partner (mis. dari Dashboard Laravel Nara Institute) */}
+      {(partnerContext || partnerError) && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
+          {partnerContext ? (
+            <div className="rounded-2xl bg-indigo-50/90 border border-indigo-200 px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-indigo-950 flex items-center gap-2 flex-wrap">
+                    <span>Terhubung dengan {partnerContext.orgName}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-mono font-bold">
+                      *.{partnerContext.domain}
+                    </span>
+                  </p>
+                  <p className="text-xs text-indigo-800/85 mt-0.5">
+                    {partnerCallbackUrl
+                      ? 'vCard Anda sudah aktif. Klik tombol di samping untuk menyinkronkan link ke Dashboard Nara Institute.'
+                      : `Isi data & pilih gaya vCard Anda, lalu di Langkah 3 pilih domain kustom *.${partnerContext.domain}${partnerContext.waiveCredit ? ' (gratis tanpa potongan 3 kredit)' : ''}.`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {partnerCallbackUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      storePartnerToken(null);
+                      window.location.href = partnerCallbackUrl;
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Sinkron &amp; Kembali ke {partnerContext.orgName}
+                  </button>
+                ) : partnerContext.returnUrl ? (
+                  <a
+                    href={new URL(partnerContext.returnUrl).origin}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-indigo-100/60 border border-indigo-200 text-indigo-800 text-xs font-semibold transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Dashboard {partnerContext.orgName}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ) : partnerError ? (
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 text-xs sm:text-sm text-amber-900">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>{partnerError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPartnerError(null)}
+                className="text-amber-700 hover:text-amber-900 p-1 cursor-pointer"
+                aria-label="Tutup peringatan"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {/* Konten Utama 2 Kolom */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
@@ -1043,10 +1443,14 @@ export default function QRGeneratorPage() {
                     onChangePassword={updatePassword}
                     activeSlug={activeSlug}
                     defaultShortCode={defaultShortCode}
+                    selectedPublicDomain={selectedPublicDomain}
+                    availableDomains={availableDomains}
+                    waiveCustomDomainCredit={waiveCustomDomainCredit}
                     domainSuggestions={domainSuggestions}
                     customSlugInput={customSlugInput}
                     domainAvailability={domainAvailability}
                     creditRemaining={displayedCredit ? displayedCredit.remaining : null}
+                    onSelectPublicDomain={handleSelectPublicDomain}
                     onSelectDefaultDomain={handleSelectDefaultDomain}
                     onSelectSuggestedDomain={handleSelectSuggestedDomain}
                     onSelectCustomDomainMode={handleSelectCustomDomainMode}
@@ -1166,11 +1570,24 @@ export default function QRGeneratorPage() {
                       redirectToLoginForDownload();
                       return;
                     }
-                    void handleSaveToSupabase().then((ok) => {
-                      if (ok) {
+                    void handleSaveToSupabase().then((res) => {
+                      if (!res.ok) return;
+                      if (res.callbackUrl && partnerContext) {
+                        void showConfirm(
+                          'Tersimpan & Siap Disinkronkan',
+                          `vCard Anda aktif di ${res.liveUrl}. Ingin langsung kembali & menyimpan link ini ke Dashboard ${partnerContext.orgName}?`,
+                          `Sinkron ke ${partnerContext.orgName}`,
+                          'Tetap di Sini'
+                        ).then((choice) => {
+                          if (choice.isConfirmed && res.callbackUrl) {
+                            storePartnerToken(null);
+                            window.location.href = res.callbackUrl;
+                          }
+                        });
+                      } else {
                         void showSuccess(
                           'Tersimpan',
-                          'Kode QR URL Anda berhasil disimpan ke akun Anda.'
+                          `Kode QR Anda berhasil disimpan${res.liveUrl ? ` (${res.liveUrl})` : ' ke akun Anda'}.`
                         );
                       }
                     });

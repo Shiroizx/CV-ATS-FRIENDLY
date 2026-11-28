@@ -401,7 +401,7 @@ export default function SpkDssPage() {
             <div>{error}</div>
             <div className="mt-3 text-xs text-red-600">
               Pastikan kamu sudah menjalankan{" "}
-              <code className="bg-red-100 px-1.5 py-0.5 rounded text-red-900 font-mono">sql_spk_analytics.sql</code>{" "}
+              <code className="bg-red-100 px-1.5 py-0.5 rounded text-red-900 font-mono">sql/sql_spk_analytics.sql</code>{" "}
               di Supabase SQL Editor.
             </div>
           </div>

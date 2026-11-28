@@ -415,6 +415,33 @@ export type QRFrameType =
 
 export type QRDomainMode = 'default' | 'suggested' | 'custom';
 
+export interface QRAllowedDomainOption {
+  domain: string;
+  orgSlug: string;
+  orgName: string;
+  waiveCredit: boolean;
+  authSource: 'default' | 'partner_token' | 'email_domain';
+}
+
+export interface QRPartnerContext {
+  token: string;
+  domain: string;
+  orgSlug: string;
+  orgName: string;
+  waiveCredit: boolean;
+  externalUserId?: string;
+  userName?: string;
+  userEmail?: string;
+  userPhone?: string;
+  userPosition?: string;
+  userCompany?: string;
+  userWebsite?: string;
+  suggestedSlug?: string;
+  returnUrl?: string;
+  callbackState?: string;
+  editQrId?: string;
+}
+
 export interface QRStyleOptions {
   frameType: QRFrameType;
   frameText: string;
@@ -440,6 +467,7 @@ export interface QRStyleOptions {
   logoMargin: number;
   errorCorrection: 'L' | 'M' | 'Q' | 'H';
   domainMode?: QRDomainMode;
+  publicDomain?: string;
   paidCustomDomainSlug?: string | null;
 }
 
@@ -452,6 +480,9 @@ export interface QRPasswordOptions {
 export interface SavedQRCode {
   id: string;
   short_code: string;
+  public_domain?: string;
+  org_slug?: string | null;
+  external_owner_ref?: string | null;
   user_id: string;
   qr_type: QRType;
   title: string;
@@ -491,6 +522,7 @@ export const DEFAULT_QR_STYLE: QRStyleOptions = {
   logoMargin: 6,
   errorCorrection: 'M',
   domainMode: 'default',
+  publicDomain: 'freebuildcv.tech',
   paidCustomDomainSlug: null,
 };
 

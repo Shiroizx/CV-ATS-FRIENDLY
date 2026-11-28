@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   ExternalLink,
@@ -12,7 +12,10 @@ import {
 } from 'lucide-react';
 import { getPublicQRByCode, verifyPublicQRPassword } from '../lib/qrService';
 import {
+  PARTNER_BRAND_META,
+  PUBLIC_QR_DOMAIN,
   extractDisplayHost,
+  normalizePublicQRDomain,
   resolveBusinessPreviewChrome,
   resolveVCardPreviewChrome,
   sanitizeExternalUrl,
@@ -43,17 +46,32 @@ function useIsDesktopSm(): boolean {
 
 export default function PublicQRViewerPage({
   overrideShortCode,
+  overrideDomain,
 }: {
   overrideShortCode?: string;
+  overrideDomain?: string;
 }) {
   const { shortCode: routeShortCode } = useParams<{ shortCode: string }>();
+  const [searchParams] = useSearchParams();
   const shortCode = overrideShortCode || routeShortCode;
+  const queryDomain = searchParams.get('domain');
+  const effectiveDomain = overrideDomain
+    ? normalizePublicQRDomain(overrideDomain)
+    : queryDomain
+      ? normalizePublicQRDomain(queryDomain)
+      : undefined;
   const isSubdomainView = Boolean(overrideShortCode);
+  const brandMeta =
+    PARTNER_BRAND_META[effectiveDomain || PUBLIC_QR_DOMAIN] ??
+    PARTNER_BRAND_META[PUBLIC_QR_DOMAIN];
+  const isPartnerWhiteLabel = Boolean(
+    effectiveDomain && effectiveDomain !== PUBLIC_QR_DOMAIN
+  );
   const isDesktop = useIsDesktopSm();
   const [loading, setLoading] = useState(Boolean(shortCode));
   const [isNotActivated, setIsNotActivated] = useState(!shortCode);
   const [errorMsg, setErrorMsg] = useState('');
-  const [title, setTitle] = useState('Kode QR FreeBuild CV');
+  const [title, setTitle] = useState(`Kode QR ${brandMeta.name}`);
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [unlockedUrl, setUnlockedUrl] = useState<string | null>(null);
   const [vcardContent, setVcardContent] = useState<VCardContent | null>(null);
@@ -73,12 +91,12 @@ export default function PublicQRViewerPage({
     }
 
     let cancelled = false;
-    void getPublicQRByCode(shortCode).then(({ data, notFound, error }) => {
+    void getPublicQRByCode(shortCode, effectiveDomain).then(({ data, notFound, error }) => {
       if (cancelled) return;
       setLoading(false);
       if (notFound) {
         setIsNotActivated(true);
-        document.title = 'QR Code Belum Diaktifkan - FreeBuild CV';
+        document.title = `QR Code Belum Diaktifkan - ${brandMeta.name}`;
         return;
       }
       if (error || !data) {
@@ -87,7 +105,7 @@ export default function PublicQRViewerPage({
       }
 
       setTitle(data.title || 'Kode QR');
-      document.title = `${data.title || 'Kode QR'} - FreeBuild CV`;
+      document.title = `${data.title || 'Kode QR'} - ${brandMeta.name}`;
 
       if (data.requires_password) {
         setRequiresPassword(true);
@@ -113,7 +131,7 @@ export default function PublicQRViewerPage({
     return () => {
       cancelled = true;
     };
-  }, [shortCode]);
+  }, [shortCode, effectiveDomain, brandMeta.name]);
 
   useEffect(() => {
     if (!splashVisible) return;
@@ -130,7 +148,7 @@ export default function PublicQRViewerPage({
 
     setPwdError('');
     setVerifying(true);
-    const res = await verifyPublicQRPassword(shortCode, password);
+    const res = await verifyPublicQRPassword(shortCode, password, effectiveDomain);
     setVerifying(false);
 
     if (res.error) {
@@ -170,13 +188,15 @@ export default function PublicQRViewerPage({
   };
 
   const renderBrandFooter = () =>
-    isSubdomainView ? (
+    isSubdomainView || isPartnerWhiteLabel ? (
       <a
-        href="https://www.freebuildcv.tech"
+        href={brandMeta.homeUrl}
         className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors pt-2 pb-1"
       >
         <QrCode className="w-3.5 h-3.5" />
-        Dibuat dengan FreeBuild CV
+        {isPartnerWhiteLabel
+          ? `Kartu Digital Resmi ${brandMeta.name}`
+          : 'Dibuat dengan FreeBuild CV'}
       </a>
     ) : (
       <Link
@@ -362,9 +382,9 @@ export default function PublicQRViewerPage({
             </div>
             <h1 className="text-xl font-bold text-zinc-900">QR Tidak Tersedia</h1>
             <p className="text-sm text-zinc-600">{errorMsg}</p>
-            {isSubdomainView ? (
+            {isSubdomainView || isPartnerWhiteLabel ? (
               <a
-                href="https://www.freebuildcv.tech"
+                href={brandMeta.homeUrl}
                 className="inline-block px-5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition-colors"
               >
                 Kembali ke Beranda
@@ -457,13 +477,25 @@ export default function PublicQRViewerPage({
         )}
       </div>
 
-      <Link
-        to="/"
-        className="mt-6 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors"
-      >
-        <QrCode className="w-3.5 h-3.5" />
-        Dibuat dengan FreeBuild CV
-      </Link>
+      {isSubdomainView || isPartnerWhiteLabel ? (
+        <a
+          href={brandMeta.homeUrl}
+          className="mt-6 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors"
+        >
+          <QrCode className="w-3.5 h-3.5" />
+          {isPartnerWhiteLabel
+            ? `Kartu Digital Resmi ${brandMeta.name}`
+            : 'Dibuat dengan FreeBuild CV'}
+        </a>
+      ) : (
+        <Link
+          to="/"
+          className="mt-6 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 transition-colors"
+        >
+          <QrCode className="w-3.5 h-3.5" />
+          Dibuat dengan FreeBuild CV
+        </Link>
+      )}
     </div>
   );
 }

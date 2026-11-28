@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type {
+  QRAllowedDomainOption,
   QRCornerDotType,
   QRCornerSquareType,
   QRDotType,
@@ -40,10 +41,14 @@ interface QRCustomizerProps {
   onChangePassword: (opts: QRPasswordOptions) => void;
   activeSlug: string;
   defaultShortCode: string;
+  selectedPublicDomain?: string;
+  availableDomains?: readonly QRAllowedDomainOption[];
+  waiveCustomDomainCredit?: boolean;
   domainSuggestions: readonly string[];
   customSlugInput: string;
   domainAvailability: SlugAvailabilityStatus;
   creditRemaining: number | null;
+  onSelectPublicDomain?: (domain: string) => void;
   onSelectDefaultDomain: () => void;
   onSelectSuggestedDomain: (slug: string) => void;
   onSelectCustomDomainMode: () => void;
@@ -283,10 +288,14 @@ export default function QRCustomizer({
   onChangePassword,
   activeSlug,
   defaultShortCode,
+  selectedPublicDomain,
+  availableDomains,
+  waiveCustomDomainCredit,
   domainSuggestions,
   customSlugInput,
   domainAvailability,
   creditRemaining,
+  onSelectPublicDomain,
   onSelectDefaultDomain,
   onSelectSuggestedDomain,
   onSelectCustomDomainMode,
@@ -819,6 +828,9 @@ export default function QRCustomizer({
       {/* 5. Domain kustom (di bawah Tambahkan logo) */}
       <QRDomainSelectorCard
         domainMode={style.domainMode ?? 'default'}
+        selectedPublicDomain={selectedPublicDomain}
+        availableDomains={availableDomains}
+        waiveCustomDomainCredit={waiveCustomDomainCredit}
         activeSlug={activeSlug}
         defaultShortCode={defaultShortCode}
         paidCustomSlug={style.paidCustomDomainSlug ?? null}
@@ -827,6 +839,7 @@ export default function QRCustomizer({
         availability={domainAvailability}
         creditRemaining={creditRemaining}
         errorMsg={errors.customDomain}
+        onSelectPublicDomain={onSelectPublicDomain}
         onSelectDefault={onSelectDefaultDomain}
         onSelectSuggestion={onSelectSuggestedDomain}
         onSelectCustomMode={onSelectCustomDomainMode}

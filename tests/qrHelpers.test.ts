@@ -30,6 +30,9 @@ import {
   validateSubdomainSlug,
   generateDomainSuggestions,
   extractQRSubdomainFromHostname,
+  extractQRHostTargetFromHostname,
+  normalizePublicQRDomain,
+  isAllowedPartnerReturnUrl,
 } from '../src/lib/qrHelpers.ts';
 import {
   DEFAULT_QR_STYLE,
@@ -329,6 +332,52 @@ test('subdomain normalization, validation, suggestions, and hostname parsing wor
   assert.equal(
     resolveQRViewerLink('https://www.freebuildcv.tech', 'coffenusa', 'suggested'),
     'https://coffenusa.freebuildcv.tech'
+  );
+
+  // Multi-domain partner (*.narainstitute.net)
+  assert.deepEqual(extractQRHostTargetFromHostname('asep.narainstitute.net'), {
+    shortCode: 'asep',
+    domain: 'narainstitute.net',
+  });
+  assert.deepEqual(extractQRHostTargetFromHostname('ADLZIL.freebuildcv.tech'), {
+    shortCode: 'adlzil',
+    domain: 'freebuildcv.tech',
+  });
+  assert.equal(extractQRHostTargetFromHostname('narainstitute.net'), null);
+  assert.equal(extractQRHostTargetFromHostname('www.narainstitute.net'), null);
+  assert.equal(extractQRSubdomainFromHostname('asep.narainstitute.net'), 'asep');
+  assert.equal(validateSubdomainSlug('cpanel').valid, false);
+  assert.equal(validateSubdomainSlug('webmail').valid, false);
+  assert.equal(validateSubdomainSlug('autodiscover').valid, false);
+  assert.equal(normalizePublicQRDomain('https://NaraInstitute.NET/'), 'narainstitute.net');
+  assert.equal(normalizePublicQRDomain(''), 'freebuildcv.tech');
+  assert.equal(
+    resolveUrlQRPayload('https://www.freebuildcv.tech', 'asep', 'custom', 'narainstitute.net'),
+    'https://asep.narainstitute.net'
+  );
+  assert.equal(
+    resolveQRViewerLink('https://www.freebuildcv.tech', 'asep', 'custom', 'narainstitute.net'),
+    'https://asep.narainstitute.net'
+  );
+  assert.equal(
+    resolveQRViewerLink('http://localhost:5173', 'asep', 'custom', 'narainstitute.net'),
+    'http://localhost:5173/q/asep?domain=narainstitute.net'
+  );
+  assert.equal(
+    isAllowedPartnerReturnUrl('https://narainstitute.net/sales/vcard/callback', 'narainstitute.net'),
+    true
+  );
+  assert.equal(
+    isAllowedPartnerReturnUrl('http://localhost:8000/admin/hub/vcard/callback', 'narainstitute.net'),
+    true
+  );
+  assert.equal(
+    isAllowedPartnerReturnUrl('https://evil-phish.com/steal', 'narainstitute.net'),
+    false
+  );
+  assert.equal(
+    isAllowedPartnerReturnUrl('javascript:alert(1)', 'narainstitute.net'),
+    false
   );
 });
 

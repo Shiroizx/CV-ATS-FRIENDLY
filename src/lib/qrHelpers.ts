@@ -260,11 +260,13 @@ export function validateQRForm(
 export function resolveUrlQRPayload(
   origin: string,
   shortCode: string,
-  domainMode: QRDomainMode = 'default'
+  domainMode: QRDomainMode = 'default',
+  publicDomain: string = PUBLIC_QR_DOMAIN
 ): string {
   const cleanCode = shortCode.trim();
+  const resolvedDomain = normalizePublicQRDomain(publicDomain);
   if (domainMode !== 'default' && cleanCode) {
-    return `https://${cleanCode.toLowerCase()}.freebuildcv.tech`;
+    return `https://${cleanCode.toLowerCase()}.${resolvedDomain}`;
   }
   const cleanOrigin = origin.replace(/\/$/, '');
   return `${cleanOrigin}/q/${cleanCode || 'preview'}`;
@@ -278,22 +280,30 @@ export function resolveUrlQRPayload(
 export function resolveQRViewerLink(
   origin: string,
   shortCode: string,
-  domainMode: QRDomainMode = 'default'
+  domainMode: QRDomainMode = 'default',
+  publicDomain: string = PUBLIC_QR_DOMAIN
 ): string {
   const cleanOrigin = origin.replace(/\/$/, '');
   const cleanCode = shortCode.trim();
+  const resolvedDomain = normalizePublicQRDomain(publicDomain);
   let isProdHost = false;
   try {
     const host = new URL(cleanOrigin).hostname.toLowerCase();
-    isProdHost = host === PUBLIC_QR_DOMAIN || host.endsWith(`.${PUBLIC_QR_DOMAIN}`);
+    isProdHost = KNOWN_QR_PUBLIC_DOMAINS.some(
+      (knownDomain) => host === knownDomain || host.endsWith(`.${knownDomain}`)
+    );
   } catch {
     isProdHost = false;
   }
 
   if (isProdHost) {
-    return resolveUrlQRPayload(origin, shortCode, domainMode);
+    return resolveUrlQRPayload(origin, shortCode, domainMode, resolvedDomain);
   }
-  return `${cleanOrigin}/q/${cleanCode || 'preview'}`;
+  const basePath = `${cleanOrigin}/q/${cleanCode || 'preview'}`;
+  if (resolvedDomain !== PUBLIC_QR_DOMAIN) {
+    return `${basePath}?domain=${encodeURIComponent(resolvedDomain)}`;
+  }
+  return basePath;
 }
 
 /**
@@ -1047,6 +1057,25 @@ export function normalizeVCardSkills(skills: readonly string[] | undefined): str
 }
 
 export const PUBLIC_QR_DOMAIN = 'freebuildcv.tech';
+export const KNOWN_QR_PUBLIC_DOMAINS = [
+  PUBLIC_QR_DOMAIN,
+  'narainstitute.net',
+] as const;
+
+export const PARTNER_BRAND_META: Record<
+  string,
+  { name: string; homeUrl: string }
+> = {
+  'freebuildcv.tech': {
+    name: 'FreeBuild CV',
+    homeUrl: 'https://www.freebuildcv.tech',
+  },
+  'narainstitute.net': {
+    name: 'Nara Institute',
+    homeUrl: 'https://narainstitute.net',
+  },
+};
+
 export const CUSTOM_DOMAIN_CREDIT_COST = 3;
 
 export const RESERVED_SUBDOMAINS = new Set([
@@ -1080,12 +1109,67 @@ export const RESERVED_SUBDOMAINS = new Set([
   'status',
   'blog',
   'docs',
+  'cpanel',
+  'webmail',
+  'whm',
+  'autodiscover',
+  'autoconfig',
+  'cpcalendars',
+  'cpcontacts',
+  'webdisk',
+  'exam',
+  'assessment',
+  'portal',
+  'client',
 ]);
 
-const PRIMARY_APP_HOSTS = new Set([
-  PUBLIC_QR_DOMAIN,
-  `www.${PUBLIC_QR_DOMAIN}`,
-]);
+const PRIMARY_APP_HOSTS = new Set(
+  KNOWN_QR_PUBLIC_DOMAINS.flatMap((domain) => [domain, `www.${domain}`])
+);
+
+/**
+ * Menormalkan domain publik QR agar selalu huruf kecil dan jatuh ke default `freebuildcv.tech`.
+ */
+export function normalizePublicQRDomain(domain?: string | null): string {
+  const cleaned = (domain || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/^\.+|\.+$/g, '');
+  if (!cleaned || !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(cleaned)) {
+    return PUBLIC_QR_DOMAIN;
+  }
+  return cleaned;
+}
+
+/**
+ * Memastikan returnUrl callback dari integrasi partner hanya mengarah ke origin resmi atau lokal dev.
+ */
+export function isAllowedPartnerReturnUrl(
+  rawUrl: string | undefined | null,
+  partnerDomain: string
+): boolean {
+  if (!rawUrl || !rawUrl.trim()) return false;
+  try {
+    const parsed = new URL(rawUrl.trim());
+    const host = parsed.hostname.toLowerCase();
+    const normDomain = normalizePublicQRDomain(partnerDomain);
+
+    if (parsed.protocol === 'https:') {
+      return host === normDomain || host.endsWith(`.${normDomain}`);
+    }
+    if (
+      parsed.protocol === 'http:' &&
+      (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.test'))
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Membersihkan input teks agar aman menjadi slug subdomain huruf kecil `[a-z0-9-]`.
@@ -1214,17 +1298,36 @@ export function generateDomainSuggestions(
   return unique;
 }
 
+export interface QRHostTarget {
+  shortCode: string;
+  domain: string;
+}
+
+/**
+ * Mengekstrak slug subdomain dan base domain QR dari hostname browser
+ * (mis. 'adlzil.freebuildcv.tech' -> { shortCode: 'adlzil', domain: 'freebuildcv.tech' },
+ * 'asep.narainstitute.net' -> { shortCode: 'asep', domain: 'narainstitute.net' }).
+ */
+export function extractQRHostTargetFromHostname(
+  hostname: string
+): QRHostTarget | null {
+  const clean = hostname.trim().toLowerCase().replace(/:\d+$/, '');
+  if (!clean || PRIMARY_APP_HOSTS.has(clean)) return null;
+
+  for (const domain of KNOWN_QR_PUBLIC_DOMAINS) {
+    const suffix = `.${domain}`;
+    if (!clean.endsWith(suffix)) continue;
+    const sub = clean.slice(0, -suffix.length);
+    if (!sub || sub.includes('.') || sub === 'www') return null;
+    return { shortCode: sub, domain };
+  }
+
+  return null;
+}
+
 /**
  * Mengekstrak subdomain kustom QR dari hostname browser (mis. 'adlzil' dari 'adlzil.freebuildcv.tech').
  */
 export function extractQRSubdomainFromHostname(hostname: string): string | null {
-  const clean = hostname.trim().toLowerCase().replace(/:\d+$/, '');
-  if (!clean || PRIMARY_APP_HOSTS.has(clean)) return null;
-
-  const suffix = `.${PUBLIC_QR_DOMAIN}`;
-  if (!clean.endsWith(suffix)) return null;
-
-  const sub = clean.slice(0, -suffix.length);
-  if (!sub || sub.includes('.') || sub === 'www') return null;
-  return sub;
+  return extractQRHostTargetFromHostname(hostname)?.shortCode ?? null;
 }
