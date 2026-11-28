@@ -84,7 +84,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // 2. Hasilkan one-time magiclink token_hash (sekaligus mengambil user existing jika sudah terdaftar)
-    const linkRes = await supabaseAdmin.auth.admin.generateLink({
+    let linkRes = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email,
     });
@@ -106,15 +106,31 @@ export async function POST(request: Request): Promise<Response> {
     existingUserMeta =
       (linkRes.data.user.user_metadata as Record<string, unknown> | undefined) || {};
 
-    // 3. Sinkronkan metadata partner pada akun existing (tetap pertahankan metadata bawaan seperti download_count)
+    // 3. Sinkronkan metadata partner pada akun existing, lalu terbitkan ulang magiclink
+    //    karena updateUserById dapat menginvalidasi token magiclink sebelumnya di Supabase GoTrue.
     if (!isNewAccount) {
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
-        email_confirm: true,
-        user_metadata: {
-          ...existingUserMeta,
-          ...partnerMetadata,
-        },
-      });
+      const needsMetaUpdate = Object.entries(partnerMetadata).some(
+        ([k, v]) => existingUserMeta[k] !== v
+      );
+      if (needsMetaUpdate) {
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: {
+            ...existingUserMeta,
+            ...partnerMetadata,
+          },
+        });
+        const refreshedLink = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+        });
+        if (
+          !refreshedLink.error &&
+          refreshedLink.data?.user &&
+          refreshedLink.data.properties?.hashed_token
+        ) {
+          linkRes = refreshedLink;
+        }
+      }
     }
 
     // 4. Rekonsiliasi kepemilikan vCard lama milik external_user_id ini (jika sebelumnya sempat tersimpan di akun lain)
