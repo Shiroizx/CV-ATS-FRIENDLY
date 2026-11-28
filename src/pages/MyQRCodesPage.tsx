@@ -17,6 +17,7 @@ import type { SavedQRCode } from '../types/qrGenerator';
 import { DEFAULT_QR_STYLE } from '../types/qrGenerator';
 import {
   extractDisplayHost,
+  isFreePartnerVCardRule,
   resolveQRViewerLink,
   resolveUrlQRPayload,
   sanitizeExternalUrl,
@@ -106,31 +107,49 @@ export default function MyQRCodesPage() {
   }, []);
 
   const handleDelete = async (qr: SavedQRCode) => {
+    const isPartnerVCard = isFreePartnerVCardRule(
+      qr.qr_type,
+      qr.public_domain || qr.style_options?.publicDomain
+    );
     const res = await showDeleteConfirm(
       'Hapus QR Code?',
-      `QR "${qr.title}" akan dihapus permanen dari akun Anda.`
+      isPartnerVCard
+        ? `vCard "${qr.title}" (${qr.short_code}.${qr.public_domain || qr.style_options?.publicDomain}) beserta gambarnya akan dihapus permanen dari FreeBuild CV & Dashboard Nara Institute sehingga tautannya tidak dapat diakses lagi.`
+        : `QR "${qr.title}" akan dihapus permanen dari akun Anda.`
     );
     if (!res.isConfirmed) return;
 
-    const { error } = await deleteQRCode(qr.id);
+    const { error } = await deleteQRCode(qr.id, qr);
     if (error) {
       await showError('Gagal Menghapus', error.message);
       return;
     }
     setItems((prev) => prev.filter((item) => item.id !== qr.id));
-    await showSuccess('Terhapus', 'QR Code berhasil dihapus.');
+    await showSuccess(
+      'Terhapus',
+      isPartnerVCard
+        ? 'vCard, gambar, dan tautannya telah dihapus dari FreeBuild CV & disinkronkan ke Dashboard Nara.'
+        : 'QR Code berhasil dihapus.'
+    );
   };
 
   const handleDownloadQuick = async (qr: SavedQRCode, format: 'png' | 'svg') => {
     setDownloadingId(qr.id);
     try {
-      const { allowed, credit } = await consumeQRDownloadCredit(
-        `${qr.title} (${format.toUpperCase()})`
-      );
-      setCreditInfo(credit);
-      if (!allowed) {
-        await showDownloadLimitReached(credit.count, credit.max);
-        return;
+      const qrDomain = qr.public_domain || qr.style_options?.publicDomain;
+      const isFreePartnerVCard = isFreePartnerVCardRule(qr.qr_type, qrDomain);
+
+      let latestCredit = creditInfo;
+      if (!isFreePartnerVCard) {
+        const { allowed, credit } = await consumeQRDownloadCredit(
+          `${qr.title} (${format.toUpperCase()})`
+        );
+        latestCredit = credit;
+        setCreditInfo(credit);
+        if (!allowed) {
+          await showDownloadLimitReached(credit.count, credit.max);
+          return;
+        }
       }
 
       const origin = window.location.origin;
@@ -138,7 +157,7 @@ export default function MyQRCodesPage() {
         origin,
         qr.short_code,
         qr.style_options?.domainMode ?? 'default',
-        qr.public_domain || qr.style_options?.publicDomain
+        qrDomain
       );
       await exportQRFile(
         payload,
@@ -148,7 +167,9 @@ export default function MyQRCodesPage() {
       );
       void showToast(
         'success',
-        `QR (${format.toUpperCase()}) diunduh · Sisa kredit: ${credit.remaining}/${credit.max}`
+        isFreePartnerVCard
+          ? `QR vCard (${format.toUpperCase()}) diunduh • Gratis Partner (0 Kredit)`
+          : `QR (${format.toUpperCase()}) diunduh · Sisa kredit: ${latestCredit?.remaining ?? '-'}/${latestCredit?.max ?? '-'}`
       );
     } catch (err) {
       await showError(

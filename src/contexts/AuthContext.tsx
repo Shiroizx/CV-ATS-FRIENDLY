@@ -1,19 +1,27 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { getPartnerAccountMeta } from "../lib/qrHelpers";
+import type { PartnerAccountMeta } from "../lib/qrHelpers";
 
 interface AuthContextType {
     user: User | null;
     session: Session | null;
     loading: boolean;
-    signOut: () => Promise<void>;
+    isPartnerAccount: boolean;
+    partnerMeta: PartnerAccountMeta | null;
+    signOut: () => Promise<{ blocked?: boolean }>;
+    forceSignOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     session: null,
     loading: true,
-    signOut: async () => { },
+    isPartnerAccount: false,
+    partnerMeta: null,
+    signOut: async () => ({}),
+    forceSignOut: async () => { },
 });
 
 export const useAuth = () => {
@@ -75,12 +83,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
     }, []);
 
-    const signOut = async () => {
+    const partnerMeta = useMemo(
+        () => getPartnerAccountMeta(user?.user_metadata as Record<string, unknown> | undefined),
+        [user]
+    );
+    const isPartnerAccount = Boolean(partnerMeta?.isPartner);
+
+    // Blokir logout manual jika user sedang memakai akun terkelola Partner (mis. Nara Institute)
+    const signOut = async (): Promise<{ blocked?: boolean }> => {
+        if (isPartnerAccount) {
+            return { blocked: true };
+        }
+        await supabase.auth.signOut();
+        return { blocked: false };
+    };
+
+    // Logout paksa yang hanya boleh dipanggil setelah verifikasi konfirmasi ganti akun dari Dashboard Nara
+    const forceSignOut = async (): Promise<void> => {
         await supabase.auth.signOut();
     };
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, signOut }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                session,
+                loading,
+                isPartnerAccount,
+                partnerMeta,
+                signOut,
+                forceSignOut,
+            }}
+        >
             {!loading && children}
         </AuthContext.Provider>
     );

@@ -1143,6 +1143,83 @@ export function normalizePublicQRDomain(domain?: string | null): string {
   return cleaned;
 }
 
+export interface PartnerAccountMeta {
+  isPartner: boolean;
+  orgSlug: string;
+  orgName: string;
+  domain: string;
+  laravelUserId?: string;
+  dashboardUrl: string;
+  switchAccountUrl: string;
+}
+
+/**
+ * Mengekstrak metadata akun partner (mis. Nara Institute) dari user_metadata Supabase.
+ */
+export function getPartnerAccountMeta(
+  userMetadata?: Record<string, unknown> | null
+): PartnerAccountMeta | null {
+  if (!userMetadata || userMetadata.is_partner_account !== true) {
+    return null;
+  }
+  const domain = normalizePublicQRDomain(
+    typeof userMetadata.partner_domain === 'string'
+      ? userMetadata.partner_domain
+      : 'narainstitute.net'
+  );
+  const orgSlug =
+    typeof userMetadata.partner_org === 'string' && userMetadata.partner_org.trim()
+      ? userMetadata.partner_org.trim().toLowerCase()
+      : 'narainstitute';
+  const orgName =
+    typeof userMetadata.partner_org_name === 'string' &&
+    userMetadata.partner_org_name.trim()
+      ? userMetadata.partner_org_name.trim()
+      : 'Nara Institute';
+  const laravelUserId =
+    typeof userMetadata.laravel_user_id === 'string' &&
+    userMetadata.laravel_user_id.trim()
+      ? userMetadata.laravel_user_id.trim()
+      : undefined;
+  const dashboardUrl =
+    typeof userMetadata.partner_dashboard_url === 'string' &&
+    isAllowedPartnerReturnUrl(userMetadata.partner_dashboard_url, domain)
+      ? userMetadata.partner_dashboard_url
+      : `https://${domain}/sales/vcard`;
+  const switchAccountUrl =
+    typeof userMetadata.partner_switch_url === 'string' &&
+    isAllowedPartnerReturnUrl(userMetadata.partner_switch_url, domain)
+      ? userMetadata.partner_switch_url
+      : `https://${domain}/sales/vcard/switch-account`;
+
+  return {
+    isPartner: true,
+    orgSlug,
+    orgName,
+    domain,
+    laravelUserId,
+    dashboardUrl,
+    switchAccountUrl,
+  };
+}
+
+/**
+ * Menentukan apakah sebuah QR bebas biaya kredit (0 kredit & bebas limit unduh).
+ * Sesuai kebijakan partner: HANYA vCard dengan domain resmi partner (bukan freebuildcv.tech)
+ * yang digratiskan; fitur lain (URL, Halaman Bisnis, CV Builder, domain freebuildcv.tech)
+ * tetap terkena kredit normal FreeBuild CV.
+ */
+export function isFreePartnerVCardRule(
+  qrType: string | null | undefined,
+  publicDomain?: string | null,
+  waiveDomainCredit = true
+): boolean {
+  if (qrType !== 'vcard') return false;
+  if (!waiveDomainCredit) return false;
+  const resolved = normalizePublicQRDomain(publicDomain);
+  return resolved !== PUBLIC_QR_DOMAIN;
+}
+
 /**
  * Memastikan returnUrl callback dari integrasi partner hanya mengarah ke origin resmi atau lokal dev.
  */

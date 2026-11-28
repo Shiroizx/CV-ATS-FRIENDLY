@@ -33,6 +33,8 @@ import {
   extractQRHostTargetFromHostname,
   normalizePublicQRDomain,
   isAllowedPartnerReturnUrl,
+  getPartnerAccountMeta,
+  isFreePartnerVCardRule,
 } from '../src/lib/qrHelpers.ts';
 import {
   DEFAULT_QR_STYLE,
@@ -379,6 +381,29 @@ test('subdomain normalization, validation, suggestions, and hostname parsing wor
     isAllowedPartnerReturnUrl('javascript:alert(1)', 'narainstitute.net'),
     false
   );
+
+  // Partner credit policy: ONLY vCard on partner domain is free; URL/Business & freebuildcv.tech stay metered
+  assert.equal(isFreePartnerVCardRule('vcard', 'narainstitute.net', true), true);
+  assert.equal(isFreePartnerVCardRule('vcard', 'freebuildcv.tech', true), false);
+  assert.equal(isFreePartnerVCardRule('url', 'narainstitute.net', true), false);
+  assert.equal(isFreePartnerVCardRule('business', 'narainstitute.net', true), false);
+  assert.equal(isFreePartnerVCardRule('vcard', 'narainstitute.net', false), false);
+
+  const partnerMeta = getPartnerAccountMeta({
+    is_partner_account: true,
+    partner_org: 'narainstitute',
+    partner_org_name: 'Nara Institute',
+    partner_domain: 'narainstitute.net',
+    laravel_user_id: '12',
+    partner_switch_url: 'https://narainstitute.net/admin/hub/vcard/switch-account',
+  });
+  assert.equal(partnerMeta?.isPartner, true);
+  assert.equal(partnerMeta?.domain, 'narainstitute.net');
+  assert.equal(
+    partnerMeta?.switchAccountUrl,
+    'https://narainstitute.net/admin/hub/vcard/switch-account'
+  );
+  assert.equal(getPartnerAccountMeta({ full_name: 'Regular User' }), null);
 });
 
 test('validateBusinessQRForm enforces companyName and checks CTA buttons, website, email, and socials', () => {

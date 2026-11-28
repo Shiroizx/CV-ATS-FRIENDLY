@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, deleteImage } from './supabase';
 import {
   PUBLIC_QR_DOMAIN,
   generateShortCode,
@@ -252,9 +252,30 @@ export async function getQRCodeById(
 }
 
 /**
- * Menghapus QR Code milik user yang login.
+ * Menghapus file gambar Supabase Storage (jika ada URL storage) yang tertaut pada QR.
  */
-export async function deleteQRCode(id: string): Promise<{ error: Error | null }> {
+async function cleanupQRStorageImages(qr?: Partial<SavedQRCode> | null): Promise<void> {
+  if (!qr) return;
+  const content = (qr.content_data || {}) as Record<string, unknown>;
+  const style = (qr.style_options || {}) as Record<string, unknown>;
+  const urls = [
+    content.avatarDataUrl,
+    content.bannerDataUrl,
+    content.splashDataUrl,
+    content.coverDataUrl,
+    style.logoDataUrl,
+  ].filter((u): u is string => typeof u === 'string' && u.includes('/portfolio-images/'));
+
+  await Promise.all(urls.map((url) => deleteImage(url)));
+}
+
+/**
+ * Menghapus QR Code milik user yang login beserta gambar terkait (dan menyinkronkan ke webhook partner bila ada).
+ */
+export async function deleteQRCode(
+  id: string,
+  qrSnapshot?: SavedQRCode | null
+): Promise<{ error: Error | null }> {
   try {
     const {
       data: { user },
@@ -271,6 +292,23 @@ export async function deleteQRCode(id: string): Promise<{ error: Error | null }>
       .eq('user_id', user.id);
 
     if (error) throw error;
+
+    await cleanupQRStorageImages(qrSnapshot);
+
+    if (qrSnapshot) {
+      void syncPartnerQREvent({
+        event: 'deleted',
+        qrId: qrSnapshot.id,
+        slug: qrSnapshot.short_code,
+        domain: qrSnapshot.public_domain || qrSnapshot.style_options?.publicDomain,
+        title: qrSnapshot.title,
+        qrType: qrSnapshot.qr_type,
+        externalUserId: qrSnapshot.external_owner_ref || undefined,
+        contentData: qrSnapshot.content_data as unknown as Record<string, unknown>,
+        styleOptions: qrSnapshot.style_options as unknown as Record<string, unknown>,
+      });
+    }
+
     return { error: null };
   } catch (err) {
     return { error: formatSupabaseError(err) };
@@ -549,6 +587,237 @@ export async function getAllowedQRDomains(
     });
   } catch {
     return [DEFAULT_ALLOWED_DOMAIN_OPTION];
+  }
+}
+
+export interface PartnerSsoExchangeResult {
+  ok: boolean;
+  apiUnavailable?: boolean;
+  isNewAccount?: boolean;
+  resolvedEditQrId?: string | null;
+  context: QRPartnerContext | null;
+  error: string | null;
+}
+
+/**
+ * Menukar Signed Partner Token dari Laravel lewat Vercel Serverless Function `/api/partner-sso`:
+ * otomatis membuat akun partner Supabase jika belum ada, lalu otomatis login ke akun tersebut via verifyOtp.
+ */
+export async function exchangePartnerSsoToken(
+  token: string
+): Promise<PartnerSsoExchangeResult> {
+  const cleanToken = token.trim();
+  if (!cleanToken) {
+    return { ok: false, context: null, error: 'Token partner kosong.' };
+  }
+
+  try {
+    const res = await fetch('/api/partner-sso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ token: cleanToken }),
+    });
+
+    if (res.status === 404) {
+      return {
+        ok: false,
+        apiUnavailable: true,
+        context: null,
+        error: 'Endpoint /api/partner-sso tidak tersedia di mode dev lokal.',
+      };
+    }
+
+    const data = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      error?: string;
+      isNewAccount?: boolean;
+      email?: string;
+      tokenHash?: string;
+      resolvedEditQrId?: string | null;
+      partner?: {
+        domain?: string;
+        orgSlug?: string;
+        orgName?: string;
+        externalUserId?: string;
+        name?: string;
+        email?: string;
+        phone?: string;
+        position?: string;
+        company?: string;
+        website?: string;
+        suggestedSlug?: string;
+        returnUrl?: string;
+        callbackState?: string;
+        dashboardUrl?: string;
+        switchAccountUrl?: string;
+        editQrId?: string;
+        createNew?: boolean;
+      };
+    } | null;
+
+    if (!res.ok || !data?.ok || !data.tokenHash || !data.partner?.domain) {
+      return {
+        ok: false,
+        context: null,
+        error: data?.error || 'Gagal menyiapkan sesi otomatis akun partner.',
+      };
+    }
+
+    // Jika sedang login dengan akun berbeda (mis. akun admin FreeBuild CV), tukar ke akun partner milik staf ini
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+    const targetEmail = (data.email || data.partner.email || '').trim().toLowerCase();
+    if (
+      currentUser &&
+      currentUser.email &&
+      targetEmail &&
+      currentUser.email.trim().toLowerCase() !== targetEmail
+    ) {
+      await supabase.auth.signOut();
+    }
+
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      token_hash: data.tokenHash,
+      type: 'magiclink',
+    });
+
+    if (otpError) {
+      return {
+        ok: false,
+        context: null,
+        error: `Akun partner siap, tetapi login otomatis gagal: ${otpError.message}`,
+      };
+    }
+
+    const domain = normalizePublicQRDomain(data.partner.domain);
+    const safeReturnUrl = isAllowedPartnerReturnUrl(data.partner.returnUrl, domain)
+      ? data.partner.returnUrl
+      : undefined;
+    const safeDashboardUrl = isAllowedPartnerReturnUrl(data.partner.dashboardUrl, domain)
+      ? data.partner.dashboardUrl
+      : undefined;
+    const safeSwitchUrl = isAllowedPartnerReturnUrl(data.partner.switchAccountUrl, domain)
+      ? data.partner.switchAccountUrl
+      : undefined;
+
+    return {
+      ok: true,
+      isNewAccount: Boolean(data.isNewAccount),
+      resolvedEditQrId: data.resolvedEditQrId || data.partner.editQrId || null,
+      context: {
+        token: cleanToken,
+        domain,
+        orgSlug: data.partner.orgSlug || 'narainstitute',
+        orgName: data.partner.orgName || 'Nara Institute',
+        waiveCredit: true,
+        externalUserId: data.partner.externalUserId,
+        userName: data.partner.name,
+        userEmail: data.partner.email,
+        userPhone: data.partner.phone,
+        userPosition: data.partner.position,
+        userCompany: data.partner.company,
+        userWebsite: data.partner.website,
+        suggestedSlug: data.partner.suggestedSlug,
+        returnUrl: safeReturnUrl,
+        callbackState: data.partner.callbackState,
+        dashboardUrl: safeDashboardUrl,
+        switchAccountUrl: safeSwitchUrl,
+        editQrId: data.resolvedEditQrId || data.partner.editQrId || undefined,
+        createNew: Boolean(data.partner.createNew),
+      },
+      error: null,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      context: null,
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Gagal terhubung ke layanan SSO Partner.',
+    };
+  }
+}
+
+/**
+ * Mengirim event sinkronisasi real-time (saved / deleted) ke server Vercel -> Webhook Laravel MySQL.
+ */
+export async function syncPartnerQREvent(params: {
+  event: 'saved' | 'deleted';
+  qrId: string;
+  slug?: string;
+  domain?: string;
+  url?: string;
+  title?: string;
+  qrType?: string;
+  externalUserId?: string;
+  contentData?: Record<string, unknown> | null;
+  styleOptions?: Record<string, unknown> | null;
+}): Promise<{ ok: boolean; synced?: boolean }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) return { ok: false };
+
+    const res = await fetch('/api/partner-sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!res.ok) return { ok: false };
+    const data = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      synced?: boolean;
+    } | null;
+    return { ok: Boolean(data?.ok), synced: Boolean(data?.synced) };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * Memverifikasi one-time signed logout_token yang diterbitkan setelah konfirmasi ganti akun di Dashboard Nara.
+ */
+export async function verifyPartnerLogoutToken(
+  token: string
+): Promise<{ valid: boolean; orgName?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/partner-logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ token: token.trim() }),
+    });
+    const data = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      switchConfirmed?: boolean;
+      orgName?: string;
+      error?: string;
+    } | null;
+
+    if (!res.ok || !data?.ok || !data.switchConfirmed) {
+      return {
+        valid: false,
+        error: data?.error || 'Konfirmasi ganti akun tidak valid atau kedaluwarsa.',
+      };
+    }
+
+    return { valid: true, orgName: data.orgName };
+  } catch (err) {
+    return {
+      valid: false,
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Gagal memverifikasi konfirmasi ganti akun.',
+    };
   }
 }
 

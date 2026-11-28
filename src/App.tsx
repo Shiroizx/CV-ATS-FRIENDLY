@@ -30,6 +30,7 @@ import { extractQRHostTargetFromHostname } from "./lib/qrHelpers";
 const QRGeneratorPage = lazy(() => import("./pages/QRGeneratorPage"));
 const PublicQRViewerPage = lazy(() => import("./pages/PublicQRViewerPage"));
 const MyQRCodesPage = lazy(() => import("./pages/MyQRCodesPage"));
+const PartnerLogoutPage = lazy(() => import("./pages/PartnerLogoutPage"));
 
 function App() {
   const qrHostTarget =
@@ -101,6 +102,14 @@ function App() {
             element={
               <Suspense fallback={<div className="min-h-screen bg-[#f7f9fc]" />}>
                 <PublicQRViewerPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/partner-logout"
+            element={
+              <Suspense fallback={<div className="min-h-screen bg-[#f7f9fc]" />}>
+                <PartnerLogoutPage />
               </Suspense>
             }
           />

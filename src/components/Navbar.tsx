@@ -12,7 +12,7 @@ export default function Navbar() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, signOut } = useAuth();
+    const { user, isPartnerAccount, partnerMeta, signOut } = useAuth();
     const [creditInfo, setCreditInfo] = useState<{ count: number; max: number; remaining: number } | null>(null);
 
     // Fetch credit info when dropdown opens
@@ -64,6 +64,29 @@ export default function Navbar() {
     ];
     const handleSignOut = async () => {
         setIsMenuOpen(false);
+
+        if (isPartnerAccount && partnerMeta) {
+            const partnerRes = await Swal.fire({
+                title: `Logout Diblokir (Akun Partner ${partnerMeta.orgName})`,
+                html: `<p style="font-size:14px;line-height:1.6;color:#475569;">Akun partner ini dikelola otomatis oleh <strong>${partnerMeta.orgName}</strong> untuk fitur vCard resmi (<code>*.${partnerMeta.domain}</code>) dan tidak dapat keluar secara manual langsung dari FreeBuild CV.</p><p style="font-size:13px;line-height:1.5;color:#64748b;margin-top:8px;">Jika Anda ingin berpindah ke akun FreeBuild CV pribadi lainnya, silakan lakukan <strong>konfirmasi ganti akun</strong> terlebih dahulu di Dashboard ${partnerMeta.orgName}.</p>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: `Konfirmasi di Dashboard ${partnerMeta.orgName}`,
+                cancelButtonText: 'Tetap di Akun Partner',
+                customClass: {
+                    popup: 'rounded-2xl',
+                    confirmButton: 'px-5 py-2.5 rounded-xl font-semibold bg-indigo-600 text-white hover:bg-indigo-700',
+                    cancelButton: 'px-5 py-2.5 rounded-xl font-semibold bg-zinc-200 text-zinc-800 hover:bg-zinc-300'
+                },
+                buttonsStyling: false
+            });
+
+            if (partnerRes.isConfirmed) {
+                window.location.href = partnerMeta.switchAccountUrl;
+            }
+            return;
+        }
+
         const result = await Swal.fire({
             title: 'Keluar',
             text: 'Apakah Anda yakin ingin keluar?',
@@ -80,7 +103,8 @@ export default function Navbar() {
         });
 
         if (result.isConfirmed) {
-            await signOut();
+            const res = await signOut();
+            if (res.blocked) return;
             navigate("/");
             Swal.fire({
                 icon: 'success',
@@ -99,6 +123,7 @@ export default function Navbar() {
     if (
         location.pathname === '/login' ||
         location.pathname === '/register' ||
+        location.pathname === '/partner-logout' ||
         location.pathname.startsWith('/q/') ||
         isQRSubdomain
     ) {

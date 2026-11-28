@@ -44,6 +44,7 @@ import {
   generateDomainSuggestions,
   generateShortCode,
   getQRDisplayTitle,
+  isFreePartnerVCardRule,
   normalizePublicQRDomain,
   normalizeUrl,
   resolveUrlQRPayload,
@@ -57,9 +58,11 @@ import {
   DEFAULT_ALLOWED_DOMAIN_OPTION,
   checkQRSlugAvailable,
   consumeQRDownloadCredit,
+  exchangePartnerSsoToken,
   getAllowedQRDomains,
   getQRCodeById,
   saveUserQR,
+  syncPartnerQREvent,
   verifyQRPartnerToken,
 } from '../lib/qrService';
 import type { SlugAvailabilityStatus } from '../components/qr-generator/QRDomainSelectorCard';
@@ -290,12 +293,13 @@ export default function QRGeneratorPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, partnerMeta } = useAuth();
 
   const initialQueryPartnerToken = searchParams.get('partner_token')?.trim() || null;
   const initialQueryType = searchParams.get('type')?.trim().toLowerCase() || null;
   const hasFreshPartnerLaunchRef = useRef<boolean>(Boolean(initialQueryPartnerToken));
   const partnerPrefillAppliedRef = useRef<boolean>(false);
+  const ssoExchangedTokenRef = useRef<string | null>(null);
 
   const [partnerToken, setPartnerToken] = useState<string | null>(() => {
     if (initialQueryPartnerToken) {
@@ -304,6 +308,9 @@ export default function QRGeneratorPage() {
     }
     return readStoredPartnerToken();
   });
+  const [isProvisioningPartner, setIsProvisioningPartner] = useState<boolean>(() =>
+    Boolean(initialQueryPartnerToken)
+  );
   const [partnerContext, setPartnerContext] = useState<QRPartnerContext | null>(null);
   const [partnerError, setPartnerError] = useState<string | null>(null);
   const [partnerCallbackUrl, setPartnerCallbackUrl] = useState<string | null>(null);
@@ -428,28 +435,25 @@ export default function QRGeneratorPage() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  // Verifikasi Signed Partner Token (mis. dari Dashboard Laravel Nara Institute)
+  // Auto-SSO & Verifikasi Signed Partner Token (dari Dashboard Laravel Nara Institute)
   useEffect(() => {
     if (!partnerToken) return;
 
     let cancelled = false;
-    void verifyQRPartnerToken(partnerToken).then(({ context, error }) => {
-      if (cancelled) return;
-      if (error || !context) {
-        setPartnerContext(null);
-        setPartnerError(error || 'Token integrasi partner tidak valid.');
-        storePartnerToken(null);
-        setPartnerToken(null);
-        return;
-      }
 
+    const applyVerifiedContext = (
+      context: QRPartnerContext,
+      resolvedEditQrId: string | null,
+      isFreshLaunch: boolean
+    ) => {
       setPartnerError(null);
       setPartnerContext(context);
 
-      // Jika datang untuk mengedit vCard yang sudah terhubung & sudah login, langsung buka editornya
-      if (context.editQrId && !id && user && hasFreshPartnerLaunchRef.current) {
+      // Jika datang untuk mengedit vCard yang sudah ada, langsung arahkan ke editor QR-nya
+      const targetEditId = resolvedEditQrId || context.editQrId || '';
+      if (targetEditId && !context.createNew && !id && isFreshLaunch) {
         hasFreshPartnerLaunchRef.current = false;
-        navigate(`/qr-generator/${context.editQrId}`, { replace: true });
+        navigate(`/qr-generator/${targetEditId}`, { replace: true });
         return;
       }
 
@@ -458,7 +462,7 @@ export default function QRGeneratorPage() {
         partnerPrefillAppliedRef.current = true;
         const cleanSuggestedSlug = sanitizeSubdomainInput(context.suggestedSlug || '');
 
-        if (hasFreshPartnerLaunchRef.current) {
+        if (isFreshLaunch) {
           setSelectedType('vcard');
           setStep(2);
           setMaxReachedStep(2);
@@ -484,17 +488,68 @@ export default function QRGeneratorPage() {
           domainMode: cleanSuggestedSlug ? 'custom' : prev.domainMode ?? 'custom',
         }));
 
-        if (cleanSuggestedSlug && hasFreshPartnerLaunchRef.current) {
+        if (cleanSuggestedSlug && isFreshLaunch) {
           setCustomSlugInput(cleanSuggestedSlug);
           setShortCode(cleanSuggestedSlug);
         }
       }
-    });
+    };
+
+    const runPartnerHandshake = async () => {
+      const isFresh = hasFreshPartnerLaunchRef.current;
+
+      // Jalankan Auto-SSO provision & auto-login saat pertama kali mendarat dari Dashboard Nara
+      if (isFresh && ssoExchangedTokenRef.current !== partnerToken) {
+        ssoExchangedTokenRef.current = partnerToken;
+        setIsProvisioningPartner(true);
+        const ssoRes = await exchangePartnerSsoToken(partnerToken);
+        if (cancelled) return;
+
+        if (ssoRes.ok && ssoRes.context) {
+          setIsProvisioningPartner(false);
+          applyVerifiedContext(
+            ssoRes.context,
+            ssoRes.resolvedEditQrId || null,
+            true
+          );
+          return;
+        }
+
+        // Jika bukan error 404 dev lokal, tampilkan error SSO dan hentikan
+        if (!ssoRes.apiUnavailable) {
+          setIsProvisioningPartner(false);
+          setPartnerContext(null);
+          setPartnerError(
+            ssoRes.error || 'Gagal menyiapkan akun partner. Coba buka ulang dari Dashboard Nara.'
+          );
+          storePartnerToken(null);
+          setPartnerToken(null);
+          return;
+        }
+      }
+
+      // Fallback dev lokal / sesi yang sudah login: verifikasi via Supabase RPC
+      const { context, error } = await verifyQRPartnerToken(partnerToken);
+      if (cancelled) return;
+      setIsProvisioningPartner(false);
+
+      if (error || !context) {
+        setPartnerContext(null);
+        setPartnerError(error || 'Token integrasi partner tidak valid.');
+        storePartnerToken(null);
+        setPartnerToken(null);
+        return;
+      }
+
+      applyVerifiedContext(context, context.editQrId || null, isFresh);
+    };
+
+    void runPartnerHandshake();
 
     return () => {
       cancelled = true;
     };
-  }, [partnerToken, id, savedId, user, navigate]);
+  }, [partnerToken, id, savedId, navigate]);
 
   // Ambil daftar base domain yang diizinkan (freebuildcv.tech + domain partner terverifikasi)
   useEffect(() => {
@@ -558,7 +613,14 @@ export default function QRGeneratorPage() {
     [availableDomains, selectedPublicDomain]
   );
 
-  const waiveCustomDomainCredit = Boolean(selectedDomainOption.waiveCredit);
+  // Kebijakan partner: HANYA vCard dengan domain resmi partner (mis. narainstitute.net) yang gratis (0 kredit).
+  // Fitur QR lain (URL, Halaman Bisnis) dan domain freebuildcv.tech tetap terkena kredit normal!
+  const isFreePartnerVCard = isFreePartnerVCardRule(
+    content.type,
+    selectedPublicDomain,
+    selectedDomainOption.waiveCredit
+  );
+  const waiveCustomDomainCredit = isFreePartnerVCard;
 
   // Cek ketersediaan subdomain kustom saat user mengetik di langkah 3
   useEffect(() => {
@@ -987,9 +1049,9 @@ export default function QRGeneratorPage() {
       partnerToken: partnerContext?.token ?? partnerToken,
       orgSlug:
         targetDomain !== PUBLIC_QR_DOMAIN
-          ? partnerContext?.orgSlug || selectedDomainOption.orgSlug
+          ? partnerContext?.orgSlug || partnerMeta?.orgSlug || selectedDomainOption.orgSlug
           : null,
-      externalOwnerRef: partnerContext?.externalUserId || null,
+      externalOwnerRef: partnerContext?.externalUserId || partnerMeta?.laravelUserId || null,
       qrType: normalizedContent.type,
       title: getQRDisplayTitle(normalizedContent),
       content: normalizedContent,
@@ -1025,6 +1087,20 @@ export default function QRGeneratorPage() {
     const callbackUrl = partnerContext
       ? buildPartnerCallbackUrl(partnerContext, data, liveUrl)
       : null;
+
+    // Sinkronisasi otomatis 2 arah ke MySQL Laravel Nara Institute via Webhook server-to-server
+    if (savedDomain !== PUBLIC_QR_DOMAIN) {
+      void syncPartnerQREvent({
+        event: 'saved',
+        qrId: data.id,
+        slug: data.short_code,
+        domain: savedDomain,
+        url: liveUrl,
+        title: data.title,
+        qrType: data.qr_type,
+        externalUserId: partnerContext?.externalUserId || partnerMeta?.laravelUserId,
+      });
+    }
 
     setContent(normalizedContent);
     setStyle(styleToSave);
@@ -1134,34 +1210,38 @@ export default function QRGeneratorPage() {
       if (!res.isConfirmed) return;
     }
 
-    const requiredCreditCost = needsCustomDomainCharge
-      ? CUSTOM_DOMAIN_CREDIT_COST
-      : 1;
+    const requiredCreditCost = isFreePartnerVCard
+      ? 0
+      : needsCustomDomainCharge
+        ? CUSTOM_DOMAIN_CREDIT_COST
+        : 1;
 
     setIsExporting(true);
     try {
-      const preCheck = await getRemainingDownloads(true);
-      setCreditInfo(preCheck);
-      if (preCheck.remaining < requiredCreditCost) {
-        if (needsCustomDomainCharge) {
-          await showError(
-            'Kredit Tidak Cukup',
-            `Mengaktifkan custom domain sendiri memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus (sisa kredit Anda: ${preCheck.remaining}/${preCheck.max}). Pilih salah satu dari 4 saran domain gratis agar tetap 1 kredit.`
-          );
-        } else {
-          await showDownloadLimitReached(preCheck.count, preCheck.max);
+      if (requiredCreditCost > 0) {
+        const preCheck = await getRemainingDownloads(true);
+        setCreditInfo(preCheck);
+        if (preCheck.remaining < requiredCreditCost) {
+          if (needsCustomDomainCharge) {
+            await showError(
+              'Kredit Tidak Cukup',
+              `Mengaktifkan custom domain sendiri memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus (sisa kredit Anda: ${preCheck.remaining}/${preCheck.max}). Pilih salah satu dari 4 saran domain gratis agar tetap 1 kredit.`
+            );
+          } else {
+            await showDownloadLimitReached(preCheck.count, preCheck.max);
+          }
+          return;
         }
-        return;
-      }
 
-      if (needsCustomDomainCharge) {
-        const confirmDomain = await showConfirm(
-          'Gunakan 3 Kredit Sekaligus?',
-          `Mengaktifkan & mengunduh QR dengan domain kustom "${activeSlug}.${selectedPublicDomain}" akan memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit setelahnya: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
-          `Ya, Lanjutkan (${CUSTOM_DOMAIN_CREDIT_COST} Kredit)`,
-          'Batal'
-        );
-        if (!confirmDomain.isConfirmed) return;
+        if (needsCustomDomainCharge) {
+          const confirmDomain = await showConfirm(
+            'Gunakan 3 Kredit Sekaligus?',
+            `Mengaktifkan & mengunduh QR dengan domain kustom "${activeSlug}.${selectedPublicDomain}" akan memakan ${CUSTOM_DOMAIN_CREDIT_COST} kredit sekaligus. Sisa kredit setelahnya: ${preCheck.remaining - CUSTOM_DOMAIN_CREDIT_COST}/${preCheck.max}.`,
+            `Ya, Lanjutkan (${CUSTOM_DOMAIN_CREDIT_COST} Kredit)`,
+            'Batal'
+          );
+          if (!confirmDomain.isConfirmed) return;
+        }
       }
 
       const paidSlugMarker =
@@ -1182,16 +1262,20 @@ export default function QRGeneratorPage() {
       if (!saveResult.ok) return;
 
       const titleSlug = getQRDisplayTitle(content);
-      const { allowed, credit } = await consumeQRDownloadCredit(
-        needsCustomDomainCharge
-          ? `${titleSlug} (${activeSlug}.${selectedPublicDomain} - ${format.toUpperCase()})`
-          : `${titleSlug} (${format.toUpperCase()})`,
-        requiredCreditCost
-      );
-      setCreditInfo(credit);
-      if (!allowed) {
-        await showDownloadLimitReached(credit.count, credit.max);
-        return;
+      let latestCredit = creditInfo;
+      if (requiredCreditCost > 0) {
+        const { allowed, credit } = await consumeQRDownloadCredit(
+          needsCustomDomainCharge
+            ? `${titleSlug} (${activeSlug}.${selectedPublicDomain} - ${format.toUpperCase()})`
+            : `${titleSlug} (${format.toUpperCase()})`,
+          requiredCreditCost
+        );
+        latestCredit = credit;
+        setCreditInfo(credit);
+        if (!allowed) {
+          await showDownloadLimitReached(credit.count, credit.max);
+          return;
+        }
       }
 
       const exportPayload = resolveUrlQRPayload(
@@ -1205,8 +1289,8 @@ export default function QRGeneratorPage() {
       if (saveResult.callbackUrl && partnerContext) {
         const syncConfirm = await showConfirm(
           'Berhasil Disimpan & Diunduh',
-          `QR (${format.toUpperCase()}) telah diunduh untuk ${saveResult.liveUrl || exportPayload}. Sinkronkan sekarang ke Dashboard ${partnerContext.orgName}?`,
-          `Sinkron ke ${partnerContext.orgName}`,
+          `QR vCard (${format.toUpperCase()}) telah diunduh untuk ${saveResult.liveUrl || exportPayload}${isFreePartnerVCard ? ' (Gratis Partner • 0 Kredit)' : ''} dan disinkronkan otomatis ke ${partnerContext.orgName}. Ingin kembali ke Dashboard ${partnerContext.orgName} sekarang?`,
+          `Kembali ke Dashboard ${partnerContext.orgName}`,
           'Tetap di Sini'
         );
         if (syncConfirm.isConfirmed) {
@@ -1216,7 +1300,9 @@ export default function QRGeneratorPage() {
       } else {
         void showSuccess(
           'Berhasil Disimpan & Diunduh',
-          `Kode QR (${format.toUpperCase()}) telah diunduh dan tersimpan di akun Anda. Sisa kredit download: ${credit.remaining}/${credit.max}.`
+          isFreePartnerVCard
+            ? `Kode QR vCard (${format.toUpperCase()}) telah diunduh (Gratis Partner • 0 Kredit) dan tersimpan di akun Anda serta disinkronkan ke Nara Institute.`
+            : `Kode QR (${format.toUpperCase()}) telah diunduh dan tersimpan di akun Anda. Sisa kredit download: ${latestCredit?.remaining ?? '-'}/${latestCredit?.max ?? '-'}.`
         );
       }
     } catch (err) {
@@ -1235,6 +1321,36 @@ export default function QRGeneratorPage() {
       '1. Pilih jenis Kode QR (URL Situs Web, vCard, atau Halaman Bisnis).\n2. Lengkapi konten profil, jam buka, tombol aksi, atau tautan tujuan.\n3. Kustomisasi bingkai, pola titik, domain, logo, dan kata sandi opsional. Setiap QR tersimpan aman di akun Anda dan dapat dikelola lewat menu Riwayat QR.'
     );
   };
+
+  if (isProvisioningPartner) {
+    return (
+      <div className="min-h-[82vh] flex items-center justify-center p-4 bg-[#f7f9fc]">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-indigo-200/80 shadow-xl p-8 text-center space-y-5">
+          <div className="relative w-16 h-16 mx-auto">
+            <div className="absolute inset-0 rounded-2xl bg-indigo-500/15 animate-ping" />
+            <div className="relative w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-bold uppercase tracking-wider">
+              <Building2 className="w-3.5 h-3.5" />
+              Partner Auto-SSO
+            </span>
+            <h1 className="text-xl font-extrabold text-zinc-900">
+              Menyiapkan Akun Partner Anda...
+            </h1>
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              Tunggu sebentar, akun partner Anda sedang dipersiapkan dan masuk otomatis menggunakan data profil Anda.
+            </p>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
+            <div className="h-full w-2/3 rounded-full bg-indigo-600 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoadingEdit) {
     return (

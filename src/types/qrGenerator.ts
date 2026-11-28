@@ -439,7 +439,10 @@ export interface QRPartnerContext {
   suggestedSlug?: string;
   returnUrl?: string;
   callbackState?: string;
+  dashboardUrl?: string;
+  switchAccountUrl?: string;
   editQrId?: string;
+  createNew?: boolean;
 }
 
 export interface QRStyleOptions {
